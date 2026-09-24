@@ -45,6 +45,7 @@
     background:var(--bg); color:var(--ink);
     font-family:'Product Sans','Open Sans',-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;
     font-weight:400; line-height:1.45; -webkit-font-smoothing:antialiased;
+    -webkit-text-size-adjust:100%; text-size-adjust:100%;
   }
   h1,h2,h3{font-family:'Product Sans','Open Sans',sans-serif; font-weight:700; margin:0;}
   .num{font-variant-numeric:tabular-nums;}
@@ -312,6 +313,141 @@
     .quicknav{padding:0 18px;}
     section.block{padding:16px 16px 18px;}
   }
+
+  /* ---------- Phone layout (24-Sep-2026, per Harsh). Everything below is
+     phone-only (640px and narrower); the desktop view is unchanged.
+     1. Frozen header cut from about 400px to about 115px: logo and title on
+        one line, a Filters button that opens the three drop-downs, a one-
+        line summary of the current selection, and a single swipeable line
+        of section links.
+     2. Every table turns into cards: one card per row, each field shown as
+        label and value. Labels come from the table's own header cells
+        (see labelTable in the script), so a new column needs no CSS change.
+     3. Long lists show 20 cards, then a "Show 20 more" button. Search and
+        filters still run over every row. ---------- */
+  .m-filters-btn, .m-filter-summary, .m-more{display:none;}
+  @media (max-width: 640px){
+    section.block{scroll-margin-top:124px;}
+    .masthead{padding:10px 14px 9px;}
+    .masthead-inner{gap:6px 10px; flex-wrap:wrap; align-items:center;}
+    .masthead-left{flex:1 1 0; min-width:0; gap:10px;}
+    .wordmark-logo{height:18px;}
+    .masthead-divider{height:24px;}
+    .masthead-title h1{font-size:13.5px; line-height:1.25;}
+    .m-filters-btn{
+      display:inline-flex; align-items:center; gap:6px; flex:none; font-family:inherit; font-size:12.5px; font-weight:700;
+      color:#fff; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.28); border-radius:8px; padding:7px 11px; cursor:pointer;
+    }
+    .m-filters-btn .icon{width:13px; height:13px;}
+    .m-filters-btn .m-count{display:none; min-width:17px; height:17px; padding:0 5px; border-radius:999px; background:var(--accent); font-size:10.5px; line-height:17px; text-align:center;}
+    .m-filters-btn.has-active .m-count{display:inline-block;}
+    .m-filters-btn[aria-expanded="true"]{background:#fff; color:var(--ink); border-color:#fff;}
+    .m-filter-summary{display:block; flex-basis:100%; font-size:11.5px; color:rgba(255,255,255,0.62); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .masthead-right{display:none; flex-basis:100%;}
+    .masthead.filters-open .masthead-right{display:block; padding:4px 0 2px;}
+    .masthead.filters-open .m-filter-summary{display:none;}
+    .masthead-selector{display:grid; grid-template-columns:minmax(0,1fr); gap:8px;}
+    select#monthSelect, select#weekSelect, select#execSelect{min-width:0; width:100%; font-size:16px; padding:9px 32px 9px 12px;}
+
+    .quicknav{padding:0 4px;}
+    .quicknav-inner{flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch;}
+    .quicknav-inner::-webkit-scrollbar{display:none;}
+    .quicknav a{flex:none; white-space:nowrap; padding:10px 11px; font-size:11px;}
+
+    .wrap{padding:12px 12px 28px;}
+    section.block{padding:14px 12px 16px; border-radius:14px; margin-top:12px;}
+    .block-head{gap:10px;}
+    .block-head-left{gap:10px;}
+    .icon-badge{width:32px; height:32px; border-radius:9px;}
+    .icon-badge .icon{width:16px; height:16px;}
+    .block-head h2{font-size:15.5px;}
+    .block-hint{white-space:normal; align-self:flex-start;}
+    .block-desc{font-size:12.5px; margin:6px 0 10px;}
+
+    .kpi-strip{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; min-width:0; flex:none; width:100%;}
+    .kpi-mini{min-width:0; padding:10px 10px 11px;}
+    .kpi-mini .icon-badge{width:28px; height:28px; border-radius:8px;}
+    .kpi-mini .icon-badge .icon{width:14px; height:14px;}
+    .kpi-mini .kv{font-size:21px;}
+    .kpi-mini .kl{font-size:9.5px; letter-spacing:0.04em;}
+    .donut-wrap{width:100%; padding:10px 14px;}
+
+    .lead-mix-row{align-items:stretch;}
+    .lead-mix-row .breakdown-grid{width:100%;}
+    .bar-row .bar-label{flex:0 0 118px; font-size:12px;}
+    .bar-row .bar-count{width:auto; min-width:66px; font-size:11.5px;}
+
+    .pill-row{gap:8px;}
+    .pill{min-width:0; flex:1 1 140px; padding:11px 12px; gap:10px;}
+    .pill .pv{font-size:20px;}
+    .pill .pl{font-size:11px;}
+
+    .table-toolbar{margin:12px 0 10px; gap:8px;}
+    .table-toolbar input[type=search]{min-width:0; width:100%; font-size:16px;}
+
+    /* Cards */
+    .table-wrap{overflow:visible; border:none; border-radius:0; margin-bottom:0;}
+    table.leads{display:block; min-width:0; width:100%; font-size:12.5px;}
+    table.leads > thead{display:none;}
+    table.leads > tbody{display:block;}
+    table.leads > tbody > tr{
+      display:block; background:var(--surface) !important; border:1px solid var(--border); border-radius:12px;
+      padding:10px 12px 6px; margin:0 0 10px; box-shadow:0 1px 2px rgba(22,22,22,0.04);
+    }
+    table.leads > tbody > tr > td{
+      display:flow-root; padding:5px 0 5px 112px; border-bottom:1px solid var(--border-soft);
+      min-width:0 !important; max-width:none !important; white-space:normal !important; overflow-wrap:anywhere; font-size:12.5px;
+    }
+    table.leads > tbody > tr > td:last-child{border-bottom:none;}
+    table.leads > tbody > tr > td::before{
+      content:attr(data-label); float:left; width:102px; margin-left:-112px; padding-top:1px;
+      font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; line-height:1.4; color:var(--ink-muted);
+      overflow-wrap:normal;
+    }
+    table.leads > tbody > tr > td:first-child{padding:0 0 8px; margin-bottom:2px; font-size:14.5px; font-weight:700; color:var(--ink); border-bottom:1px solid var(--border);}
+    table.leads > tbody > tr > td:first-child::before{content:none;}
+    table.leads > tbody > tr > td:empty{display:none;}
+    /* Check-in time sits under the lead name as a subtitle, not as a row */
+    table.leads > tbody > tr > td:first-child:has(+ td[data-label="Time"]){border-bottom:none; padding-bottom:1px; margin-bottom:0;}
+    table.leads > tbody > tr > td[data-label="Time"]:nth-child(2){padding:0 0 8px; margin-bottom:2px; font-size:11.5px; color:var(--ink-muted); border-bottom:1px solid var(--border);}
+    table.leads > tbody > tr > td[data-label="Time"]:nth-child(2)::before{content:none;}
+    table.leads > tbody > tr > td.empty-state{padding:22px 6px; border:none; font-size:13px; font-weight:400; color:var(--ink-muted);}
+    table.leads > tbody > tr > td.empty-state::before{content:none;}
+    table.leads > tbody > tr.m-hidden{display:none;}
+    table.leads > tbody > tr > td .hist-btn{margin-top:8px;}
+
+    /* Visit history under a card */
+    table.leads > tbody > tr.history-row{padding:0; border:none; box-shadow:none; background:transparent !important; margin:-4px 0 12px;}
+    table.leads > tbody > tr.history-row > td{display:block; padding:10px; border:1px solid var(--border); border-radius:12px; background:var(--surface-3); font-size:12px; font-weight:400;}
+    table.leads > tbody > tr.history-row > td::before{content:none;}
+    .hist-scroll{overflow:visible; border:none;}
+    table.leads table.hist-table{display:block; background:transparent;}
+    table.leads table.hist-table > thead{display:none;}
+    table.leads table.hist-table > tbody{display:block;}
+    table.leads table.hist-table > tbody > tr{display:block; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:8px 10px 4px; margin-bottom:8px;}
+    table.leads table.hist-table > tbody > tr.hl{background:var(--good-bg); border-color:rgba(47,143,91,0.35);}
+    table.leads table.hist-table > tbody > tr.hl-over{background:var(--critical-bg); border-color:rgba(178,58,46,0.35);}
+    table.leads table.hist-table > tbody > tr > td{display:flow-root; background:transparent !important; padding:4px 0 4px 100px; border-bottom:1px solid var(--border-soft); white-space:normal; overflow-wrap:anywhere; width:auto;}
+    table.leads table.hist-table > tbody > tr > td:last-child{border-bottom:none;}
+    table.leads table.hist-table > tbody > tr > td::before{
+      content:attr(data-label); float:left; width:92px; margin-left:-100px;
+      font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; line-height:1.4; color:var(--ink-muted);
+    }
+    table.leads table.hist-table > tbody > tr > td.visit-no{padding:0 0 6px; width:auto !important; font-size:12.5px; color:var(--ink);}
+    table.leads table.hist-table > tbody > tr > td.visit-no::before{content:"Visit "; float:none; width:auto; margin:0; font-size:inherit; text-transform:none; letter-spacing:0; color:inherit; line-height:inherit;}
+
+    /* Section 1 detail list */
+    .detail-panel-scroll{max-height:70vh; padding:10px 10px 2px;}
+    .detail-panel-head{padding:10px 12px;}
+
+    .m-more{
+      display:flex; align-items:center; justify-content:center; width:100%; margin:2px 0 8px; padding:11px 14px;
+      font-family:inherit; font-size:12.5px; font-weight:700; color:var(--ink); background:var(--surface-2);
+      border:1px solid var(--border); border-radius:10px; cursor:pointer;
+    }
+    .m-more:active{background:var(--surface-3);}
+    .detail-panel .m-more{width:calc(100% - 20px); margin:0 10px 10px;}
+  }
 </style>
 </head>
 <body>
@@ -428,7 +564,12 @@
           <h1>Field Visit &amp; Lead Dashboard</h1>
         </div>
       </div>
-      <div class="masthead-right">
+      <button type="button" class="m-filters-btn" id="filtersBtn" aria-expanded="false" aria-controls="mastheadRight">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Filters <span class="m-count" id="filtersCount"></span>
+      </button>
+      <div class="m-filter-summary" id="filterSummary"></div>
+      <div class="masthead-right" id="mastheadRight">
         <div class="masthead-selector">
           <div class="control-group"><label class="control-label" for="monthSelect">Month</label><select id="monthSelect"></select></div>
           <div class="control-group"><label class="control-label" for="weekSelect">Week</label><select id="weekSelect"></select></div>
@@ -2421,7 +2562,108 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026"], "weeks": [{
   document.getElementById('newLeadsSearch').addEventListener('input', () => renderLeadsTable('newLeads', filteredRecords()));
   document.getElementById('existingLeadsSearch').addEventListener('input', () => renderLeadsTable('existingLeads', filteredRecords()));
 
+  // ---- Phone layout (24-Sep-2026) ---------------------------------------
+  // Cards: every table cell gets a data-label copied from its column header,
+  // which the phone CSS prints beside the value. Show more: on a phone each
+  // list shows 20 rows at a time. Both run from one MutationObserver, so
+  // every existing renderer (and any future one) is covered without
+  // touching it. A full re-render (search, filter, sort) resets the list to
+  // its first 20; opening or closing a visit history does not.
+  const PHONE_MQ = window.matchMedia('(max-width: 640px)');
+  const PAGE_STEP = 20;
+  function headLabels(table) {
+    const head = table.tHead;
+    if (!head || !head.rows.length) return [];
+    return [...head.rows[0].cells].map((th) => {
+      const t = [...th.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim();
+      return t || th.textContent.trim();
+    });
+  }
+  function labelTable(table) {
+    const labels = headLabels(table);
+    const body = table.tBodies[0];
+    if (!body || !labels.length) return;
+    [...body.rows].forEach((tr) => {
+      if (tr.classList.contains('history-row')) return;
+      [...tr.cells].forEach((td, i) => {
+        if (td.colSpan > 1) return;
+        if (td.dataset.label !== labels[i]) td.dataset.label = labels[i] || '';
+      });
+    });
+  }
+  function paginate(table) {
+    const body = table.tBodies[0];
+    if (!body) return;
+    const rows = [...body.rows].filter((tr) => !tr.classList.contains('history-row') && !tr.querySelector(':scope > td.empty-state'));
+    const phone = PHONE_MQ.matches;
+    const limit = table._mLimit || PAGE_STEP;
+    rows.forEach((tr, i) => {
+      const hide = phone && i >= limit;
+      tr.classList.toggle('m-hidden', hide);
+      const nx = tr.nextElementSibling;
+      if (nx && nx.classList.contains('history-row')) nx.classList.toggle('m-hidden', hide);
+    });
+    let btn = table._mMore;
+    if (!btn || !btn.isConnected) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'm-more';
+      btn.addEventListener('click', () => { table._mLimit = (table._mLimit || PAGE_STEP) + PAGE_STEP; paginate(table); });
+      (table.closest('.table-wrap, .detail-panel-scroll') || table).after(btn);
+      table._mMore = btn;
+    }
+    const remaining = rows.length - limit;
+    if (phone && remaining > 0) {
+      btn.style.display = '';
+      btn.textContent = 'Show ' + Math.min(PAGE_STEP, remaining) + ' more  ·  ' + fmtNum(limit) + ' of ' + fmtNum(rows.length) + ' shown';
+    } else {
+      btn.style.display = 'none';
+    }
+  }
+  function isCardTable(t) { return t && t.tagName === 'TABLE' && (t.classList.contains('leads') || t.classList.contains('hist-table')); }
+  function refreshTable(t) { labelTable(t); if (t.classList.contains('leads')) paginate(t); }
+  new MutationObserver((muts) => {
+    const touched = new Set();
+    muts.forEach((m) => {
+      m.addedNodes.forEach((n) => {
+        if (n.nodeType !== 1) return;
+        if (isCardTable(n)) touched.add(n);
+        n.querySelectorAll('table.leads, table.hist-table').forEach((t) => touched.add(t));
+      });
+      const el = m.target.nodeType === 1 ? m.target : m.target.parentElement;
+      const t = el && el.closest('table');
+      if (!isCardTable(t)) return;
+      touched.add(t);
+      if (t.classList.contains('leads') && m.target === t.tBodies[0] &&
+          [...m.removedNodes].some((n) => n.nodeType === 1 && n.tagName === 'TR' && !n.classList.contains('history-row'))) {
+        t._mLimit = PAGE_STEP;
+      }
+    });
+    touched.forEach(refreshTable);
+  }).observe(document.body, { childList: true, subtree: true });
+  const onPhoneChange = () => document.querySelectorAll('table.leads').forEach(paginate);
+  if (PHONE_MQ.addEventListener) PHONE_MQ.addEventListener('change', onPhoneChange); else PHONE_MQ.addListener(onPhoneChange);
+
+  // Filters button and one-line summary (phone header)
+  const mastheadEl = document.querySelector('.masthead');
+  const filtersBtn = document.getElementById('filtersBtn');
+  filtersBtn.addEventListener('click', () => {
+    const open = mastheadEl.classList.toggle('filters-open');
+    filtersBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  function updateFilterSummary() {
+    const ids = ['monthSelect', 'weekSelect', 'execSelect'];
+    const parts = ids.map((id) => { const el = document.getElementById(id); const o = el.options[el.selectedIndex]; return o ? o.text : ''; });
+    const active = ids.filter((id) => document.getElementById(id).value).length;
+    document.getElementById('filterSummary').textContent = parts.join('  ·  ');
+    document.getElementById('filtersCount').textContent = active ? String(active) : '';
+    filtersBtn.classList.toggle('has-active', active > 0);
+  }
+  ['monthSelect', 'weekSelect', 'execSelect'].forEach((id) => document.getElementById(id).addEventListener('change', updateFilterSummary));
+  updateFilterSummary();
+
   renderAll();
+  document.querySelectorAll('table.leads, table.hist-table').forEach(refreshTable);
 })();
 </script>
 </body>

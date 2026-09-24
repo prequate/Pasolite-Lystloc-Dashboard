@@ -52,6 +52,15 @@ Built and maintained by Prequate Advisory for Pasolite Electricals Pvt. Ltd.
 - **Overdue:** the deadline on the lead's latest visit has passed and nobody has visited since. It is measured against the day the dashboard is opened, not the last date in the data.
 - **Joint visits:** a lead leaves a rep's overdue list once any colleague visits it later. It then shows under "Followed Up by a Colleague" in that rep's view. A lead two reps visited together, with no visit since, stays on both reps' lists.
 
+## On a phone
+
+At 640px wide and below, the dashboard switches to a phone layout. The desktop view is unchanged.
+
+- The frozen header is one slim bar. A **Filters** button opens the Month, Week and Sales Executive drop-downs, and a line under it shows the current selection.
+- Every table shows as cards, one per row, with each field as a label and value.
+- Long lists show 20 cards at a time, with a **Show 20 more** button. Search and filters still cover every row.
+- Sorting by column header is desktop only.
+
 ## Known caveats
 
 - **Data cut-off:** overdue counts run to the day the file is opened. A visit made after the last weekly upload will not show until the next upload.
