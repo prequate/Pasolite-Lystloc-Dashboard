@@ -193,6 +193,23 @@
   .filter-chip-x{background:none; border:none; cursor:pointer; color:var(--ink-muted); font-size:14px; line-height:1; padding:0 5px;}
   .filter-chip-x:hover{color:var(--ink);}
 
+  /* Section 1 rep chips (24-Sep-2026): with All Executives selected and
+     two or more Lead Mix filters on, the drill-down lists the sales reps
+     behind the matching leads. Clicking one switches the whole dashboard to
+     that rep and keeps the filters. */
+  .rep-row{display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:10px 16px 4px 16px;}
+  .rep-row-label{font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-muted); margin-right:4px;}
+  .rep-chip{display:inline-flex; align-items:center; gap:7px; font-family:inherit; font-size:12px; font-weight:700; color:var(--ink);
+    background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:4px 5px 4px 11px; cursor:pointer;}
+  .rep-chip:hover{border-color:var(--accent-deep); background:var(--critical-bg);}
+  .rep-chip:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+  .rep-chip .rep-n{min-width:20px; padding:1px 7px; border-radius:999px; background:var(--ink); color:#fff; font-size:10.5px; text-align:center;}
+  .rep-hint{padding:8px 16px 2px 16px; font-size:11.5px; color:var(--ink-muted);}
+  .rep-back-row{display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:10px 16px 4px 16px; font-size:12px; color:var(--ink-secondary);}
+  .rep-back-row strong{color:var(--ink);}
+  .rep-back{display:inline-flex; align-items:center; gap:6px; font-family:inherit; font-size:11.5px; font-weight:700; color:#fff;
+    background:var(--ink); border:1px solid var(--ink); border-radius:999px; padding:4px 12px; cursor:pointer;}
+  .rep-back:hover{background:#2a2a2a;}
   .reconcile{font-size:12px; color:var(--ink-secondary); margin:14px 0 0; padding-top:2px;}
   .reconcile strong{color:var(--ink); font-weight:700;}
 
@@ -2369,6 +2386,23 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026"], "weeks": [{
     let html = '<div class="detail-panel-head"><span>' + fmtNum(rows.length) + ' lead' + (rows.length === 1 ? '' : 's') + ' match' + (rows.length === 1 ? 'es' : '') + ' your selection</span>' +
       '<button type="button" class="detail-panel-close" aria-label="Clear all filters" title="Clear all filters">Clear all</button></div>' +
       '<div class="filter-chip-row">' + chips + '</div>';
+
+    // Sales reps behind these leads (All Executives + 2 or more filters).
+    const execSel = document.getElementById('execSelect');
+    if (!execSel.value) {
+      if (activeFilterCount() >= 2 && rows.length) {
+        const byRep = {};
+        rows.forEach((r) => { const e = r.exec || '(no executive)'; byRep[e] = (byRep[e] || 0) + 1; });
+        const reps = Object.keys(byRep).sort((a, b) => byRep[b] - byRep[a] || a.localeCompare(b));
+        html += '<div class="rep-row"><span class="rep-row-label">' + reps.length + ' sales rep' + (reps.length === 1 ? '' : 's') + ' with these leads</span>' +
+          reps.map((e) => '<button type="button" class="rep-chip" data-exec="' + esc(e) + '" title="Open ' + esc(e) + '\'s view with these filters">' +
+            esc(e) + '<span class="rep-n">' + fmtNum(byRep[e]) + '</span></button>').join('') + '</div>';
+      } else if (activeFilterCount() === 1) {
+        html += '<p class="rep-hint">Add one more filter to see which sales reps these leads belong to.</p>';
+      }
+    } else if (activeFilterCount() >= 2) {
+      html += '<div class="rep-back-row"><span>Showing <strong>' + esc(execSel.value) + '</strong> only</span><button type="button" class="rep-back">&larr; Back to all executives</button></div>';
+    }
     if (rows.length === 0) {
       html += '<p class="empty-state" style="padding:24px;">No leads match this combination.</p>';
     } else {
@@ -2390,6 +2424,15 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026"], "weeks": [{
       FILTER_FIELDS.forEach((f) => activeFilters[f].clear());
       renderBreakdown(filteredRecords());
     });
+    const switchExec = (value) => {
+      const sel = document.getElementById('execSelect');
+      sel.value = value;
+      sel.dispatchEvent(new Event('change'));
+      document.getElementById('breakdown').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    wrap.querySelectorAll('.rep-chip').forEach((btn) => btn.addEventListener('click', () => switchExec(btn.dataset.exec)));
+    const back = wrap.querySelector('.rep-back');
+    if (back) back.addEventListener('click', () => switchExec(''));
     wrap.querySelectorAll('.filter-chip-x').forEach((btn) => {
       btn.addEventListener('click', () => {
         const chip = btn.closest('.filter-chip');

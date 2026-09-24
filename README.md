@@ -52,6 +52,10 @@ Built and maintained by Prequate Advisory for Pasolite Electricals Pvt. Ltd.
 - **Overdue:** the deadline on the lead's latest visit has passed and nobody has visited since. It is measured against the day the dashboard is opened, not the last date in the data.
 - **Joint visits:** a lead leaves a rep's overdue list once any colleague visits it later. It then shows under "Followed Up by a Colleague" in that rep's view. A lead two reps visited together, with no visit since, stays on both reps' lists.
 
+## Finding the reps behind a lead mix
+
+In Section 1 (Lead Mix), select All Executives and pick two or more rows or slices, for example Architect and 1 to 2 months. The panel below lists each sales rep with the number of matching leads, most first. Click a name to switch the whole dashboard to that rep with the same filters still on. **Back to all executives** returns to the list.
+
 ## On a phone
 
 At 640px wide and below, the dashboard switches to a phone layout. The desktop view is unchanged.
