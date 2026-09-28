@@ -47,14 +47,21 @@ Built and maintained by Prequate Advisory for Pasolite Electricals Pvt. Ltd.
   - "This week" means by Sunday. "Next week" means by the end of next week.
   - "Next month" means by the end of next month. "October first week" means by 7 October.
   - A spelled-out gap such as "in 2 days" is counted exactly.
-  - No usable date means the end of the week after the visit, marked "assumed".
+  - No usable date: the deadline comes from the Requirement Timeline, at most 30 days after the visit. Immediate is 7 days, Within 15 days is 15 days, anything longer is 30 days. Marked "from timeline".
+  - No date and no timeline: the end of the week after the visit, marked "assumed".
 - **Followed Up On Time:** the next visit to the lead, by any rep, came on or before the deadline. The credit goes to the rep who made the promise. A second form for the same lead on the same day counts as kept.
 - **Overdue:** the deadline on the lead's latest visit has passed and nobody has visited since. It is measured against the day the dashboard is opened, not the last date in the data.
 - **Joint visits:** a lead leaves a rep's overdue list once any colleague visits it later. It then shows under "Followed Up by a Colleague" in that rep's view. A lead two reps visited together, with no visit since, stays on both reps' lists.
 
+## Section order
+
+Overview, then Section 1 Lead Mix, Section 2 Follow-up Watch, Section 3 New Leads, Section 4 Existing Leads, Section 5 Missed Days.
+
+The dashboard opens on the most recent week in the data (and its month). With All Executives selected, the tables in Sections 2, 3 and 4 show the Sales Executive right after the Lead; the column hides when one rep is picked.
+
 ## Finding the reps behind a lead mix
 
-In Section 1 (Lead Mix), select All Executives and pick two or more rows or slices, for example Architect and 1 to 2 months. The panel below lists each sales rep with the number of matching leads, most first. Click a name to switch the whole dashboard to that rep with the same filters still on. **Back to all executives** returns to the list.
+In Section 1 (Lead Mix), select All Executives and pick two or more rows or slices, for example Architect and 1 to 2 months. A panel below shows one card per sales rep with the number of matching leads, most first. Click a card to switch the whole dashboard to that rep with the same filters still on. **Back to all sales executives** returns to the cards.
 
 ## On a phone
 

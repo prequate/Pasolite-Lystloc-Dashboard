@@ -776,6 +776,33 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
      behind the matching leads. Clicking one switches the whole dashboard to
      that rep and keeps the filters. */
   .rep-row{display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:10px 16px 4px 16px;}
+  /* 26-Sep-2026 redesign, per Harsh: the chip row read as more filter tags.
+     Now a distinct panel with a heading, one card per rep (initials, name,
+     lead count and share, a small share bar) and an "Open" cue. */
+  .rep-panel{margin:12px 16px 6px; border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:12px; background:var(--surface); box-shadow:var(--card-shadow); padding:12px 14px 14px;}
+  .rep-panel-head{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .rep-panel-title{font-size:13.5px; font-weight:700; color:var(--ink);}
+  .rep-panel-sub{font-size:11.5px; color:var(--ink-secondary); margin-top:1px;}
+  .rep-cards{display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:8px;}
+  .rep-card{display:flex; align-items:center; gap:10px; width:100%; text-align:left; font-family:inherit; cursor:pointer;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:9px 10px; transition:border-color .12s ease, background-color .12s ease, transform .12s ease;}
+  .rep-card:hover{background:var(--surface); border-color:var(--accent); transform:translateY(-1px);}
+  .rep-card:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+  .rep-avatar{flex:none; width:32px; height:32px; border-radius:50%; background:var(--ink); color:#fff; font-size:11.5px; font-weight:700; display:flex; align-items:center; justify-content:center; letter-spacing:0.02em;}
+  .rep-card:first-child .rep-avatar{background:var(--accent);}
+  .rep-meta{flex:1; min-width:0; display:flex; flex-direction:column; gap:3px;}
+  .rep-name{font-size:13px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .rep-count{font-size:11.5px; color:var(--ink-secondary);}
+  .rep-count strong{color:var(--ink);}
+  .rep-share{height:4px; border-radius:2px; background:var(--surface-3); overflow:hidden;}
+  .rep-share span{display:block; height:4px; background:var(--accent); border-radius:2px;}
+  .rep-go{flex:none; font-size:11px; font-weight:700; color:var(--accent-deep); white-space:nowrap;}
+  .rep-card:hover .rep-go{text-decoration:underline;}
+  .rep-viewing{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:12px 16px 6px; padding:10px 14px;
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:12px; background:var(--surface); box-shadow:var(--card-shadow);}
+  .rep-viewing-text{display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--ink-secondary);}
+  .rep-viewing-text strong{color:var(--ink);}
+  @media (max-width: 640px){ .rep-panel, .rep-viewing{margin:10px 10px 6px;} .rep-cards{grid-template-columns:minmax(0,1fr);} }
   .rep-row-label{font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-muted); margin-right:4px;}
   .rep-chip{display:inline-flex; align-items:center; gap:7px; font-family:inherit; font-size:12px; font-weight:700; color:var(--ink);
     background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:4px 5px 4px 11px; cursor:pointer;}
@@ -811,6 +838,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   table.leads tbody tr:nth-child(odd){background:var(--surface-2);}
   table.leads td.lead-cell{font-weight:700; color:var(--ink); white-space:nowrap;}
   table.leads td.time-cell{white-space:nowrap;}
+  table.leads td.exec-cell{font-weight:600; white-space:nowrap;}
+  table.leads.rep-view .exec-cell{display:none !important;}
   table.leads td.remarks-cell{min-width:220px; max-width:320px; white-space:normal;}
   table.leads td.loc-cell{min-width:220px; max-width:280px; white-space:normal; color:var(--ink-secondary); font-size:12px;}
 
@@ -820,6 +849,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .tag.overdue{background:var(--critical-bg); color:var(--critical);}
   .tag.unnamed{background:var(--critical-bg); color:var(--critical);}
   .tag.assumed{background:var(--watch-bg); color:var(--ink-secondary);}
+  .tag.fromtl{background:var(--teal-bg); color:var(--teal);}
   .tag.notinterested{background:var(--surface-3); color:var(--ink-secondary); border:1px solid var(--border);}
   /* Visit history drop-down (Section 4, 24-Sep-2026) */
   .hist-btn{display:inline-flex; align-items:center; gap:5px; margin-top:6px; padding:3px 10px; font-size:11px; font-weight:700; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--ink-secondary); cursor:pointer; white-space:nowrap; font-family:inherit;}
@@ -1178,9 +1208,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="quicknav-inner">
       <a href="#overview">Overview</a>
       <a href="#breakdown">Lead Mix</a>
+      <a href="#stale">Follow-up Watch</a>
       <a href="#newleads">New Leads</a>
       <a href="#existingleads">Existing Leads</a>
-      <a href="#stale">Follow-up Watch</a>
       <a href="#nocheckin">Missed Days</a>
     </div>
   </div>
@@ -1226,58 +1256,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="detail-panel" id="breakdownDetail" style="display:none;"></div>
   </section>
 
-  <section class="block" id="newleads">
-    <div class="block-head">
-      <div class="block-head-left">
-        <span class="icon-badge tone-good"><svg class="icon"><use href="#icon-users"></use></svg></span>
-        <div>
-          <div class="block-eyebrow">Section 2</div>
-          <h2>New Leads</h2>
-        </div>
-      </div>
-    </div>
-    <p class="block-desc">First time this lead's name has shown up in tracked data.</p>
-    <div class="table-toolbar">
-      <input type="search" id="newLeadsSearch" placeholder="Search lead, location, remarks...">
-      <span class="row-count" id="newLeadsRowCount"></span>
-    </div>
-    <div class="table-wrap">
-      <table class="leads" id="newLeadsTable">
-        <thead><tr id="newLeadsHeadRow"></tr></thead>
-        <tbody id="newLeadsBody"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="block" id="existingleads">
-    <div class="block-head">
-      <div class="block-head-left">
-        <span class="icon-badge tone-accent"><svg class="icon"><use href="#icon-repeat"></use></svg></span>
-        <div>
-          <div class="block-eyebrow">Section 3</div>
-          <h2>Existing Leads</h2>
-        </div>
-      </div>
-    </div>
-    <p class="block-desc">This lead's name has appeared in an earlier tracked week.</p>
-    <div class="table-toolbar">
-      <input type="search" id="existingLeadsSearch" placeholder="Search lead, location, remarks...">
-      <span class="row-count" id="existingLeadsRowCount"></span>
-    </div>
-    <div class="table-wrap">
-      <table class="leads" id="existingLeadsTable">
-        <thead><tr id="existingLeadsHeadRow"></tr></thead>
-        <tbody id="existingLeadsBody"></tbody>
-      </table>
-    </div>
-  </section>
-
   <section class="block" id="stale">
     <div class="block-head">
       <div class="block-head-left">
         <span class="icon-badge tone-accent"><svg class="icon"><use href="#icon-alert-triangle"></use></svg></span>
         <div>
-          <div class="block-eyebrow">Section 4</div>
+          <div class="block-eyebrow">Section 2</div>
           <h2>Follow-up Watch</h2>
         </div>
       </div>
@@ -1298,9 +1282,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="table-wrap">
       <table class="leads" id="keptTable">
         <thead><tr>
-          <th>Lead</th><th>Time</th><th>Est. Project Value</th><th>Type of Lead</th>
+          <th>Lead</th><th class="exec-cell">Sales Executive</th><th>Time</th><th>Est. Project Value</th><th>Type of Lead</th>
           <th>Location</th><th>Requirement Timeline</th><th>Next Follow-up</th>
-          <th>Sales Executive</th><th>Client Satisfaction</th><th>Remarks</th>
+          <th>Client Satisfaction</th><th>Remarks</th>
         </tr></thead>
         <tbody id="keptBody"></tbody>
       </table>
@@ -1321,10 +1305,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="table-wrap">
       <table class="leads" id="staleOverdueTable">
         <thead><tr>
-          <th>Lead</th><th>Time</th><th>Est. Project Value</th><th>Type of Lead</th>
+          <th>Lead</th><th class="exec-cell">Sales Executive</th><th>Time</th><th>Est. Project Value</th><th>Type of Lead</th>
           <th>Location</th><th>Requirement Timeline</th><th>Next Follow-up</th>
           <th>Due Week</th><th>Days Overdue</th>
-          <th>Sales Executive</th><th>Client Satisfaction</th><th>Remarks</th>
+          <th>Client Satisfaction</th><th>Remarks</th>
         </tr></thead>
         <tbody id="staleOverdueBody"></tbody>
       </table>
@@ -1353,6 +1337,53 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <p class="reconcile" id="colleagueNote"></p>
     </div>
   </section>
+
+  <section class="block" id="newleads">
+    <div class="block-head">
+      <div class="block-head-left">
+        <span class="icon-badge tone-good"><svg class="icon"><use href="#icon-users"></use></svg></span>
+        <div>
+          <div class="block-eyebrow">Section 3</div>
+          <h2>New Leads</h2>
+        </div>
+      </div>
+    </div>
+    <p class="block-desc">First time this lead's name has shown up in tracked data.</p>
+    <div class="table-toolbar">
+      <input type="search" id="newLeadsSearch" placeholder="Search lead, location, remarks...">
+      <span class="row-count" id="newLeadsRowCount"></span>
+    </div>
+    <div class="table-wrap">
+      <table class="leads" id="newLeadsTable">
+        <thead><tr id="newLeadsHeadRow"></tr></thead>
+        <tbody id="newLeadsBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="block" id="existingleads">
+    <div class="block-head">
+      <div class="block-head-left">
+        <span class="icon-badge tone-accent"><svg class="icon"><use href="#icon-repeat"></use></svg></span>
+        <div>
+          <div class="block-eyebrow">Section 4</div>
+          <h2>Existing Leads</h2>
+        </div>
+      </div>
+    </div>
+    <p class="block-desc">This lead's name has appeared in an earlier tracked week.</p>
+    <div class="table-toolbar">
+      <input type="search" id="existingLeadsSearch" placeholder="Search lead, location, remarks...">
+      <span class="row-count" id="existingLeadsRowCount"></span>
+    </div>
+    <div class="table-wrap">
+      <table class="leads" id="existingLeadsTable">
+        <thead><tr id="existingLeadsHeadRow"></tr></thead>
+        <tbody id="existingLeadsBody"></tbody>
+      </table>
+    </div>
+  </section>
+
 
   <section class="block" id="nocheckin">
     <div class="block-head">
@@ -1407,6 +1438,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
   // the same seven-column core; keep them in step if this ever changes.
   const LEADS_COLUMNS = [
     { key: 'lead', label: 'Lead', cls: 'lead-cell' },
+    { key: 'exec', label: 'Sales Executive', cls: 'exec-cell' },
     { key: 'time', label: 'Time', cls: 'time-cell' },
     { key: 'value', label: 'Est. Project Value' },
     { key: 'leadType', label: 'Type of Lead' },
@@ -1743,6 +1775,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     LEADS_COLUMNS.forEach((col) => {
       const th = document.createElement('th');
       th.textContent = col.label;
+      if (col.key === 'exec') th.className = 'exec-cell';
       if (col.key === state.sortKey) {
         const arrow = document.createElement('span');
         arrow.className = 'arrow';
@@ -1846,6 +1879,37 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     return ((parseInt(m[1], 10) % 12) + (/pm/i.test(m[3]) ? 12 : 0)) * 60 + parseInt(m[2], 10);
   }
 
+  // ---- No-date fallback v3 (25-Sep-2026, per Harsh) -------------------
+  // When the rep wrote no usable Next Follow-up date, the deadline now comes
+  // from the Requirement Timeline they did fill in, capped at 30 days after
+  // the visit so a long project never goes a month without contact:
+  //   Immediate 7 days · Within 15 days 15 days · 15 days to 1 month 30 days
+  //   1 to 2 months: end of next month, capped at 30 days
+  //   Above 2 months: end of the month after next, capped at 30 days
+  // Rows are tagged "from timeline". Only a visit with no timeline either
+  // falls back to the old rule (end of the week after the visit, "assumed").
+  const TIMELINE_CAP_DAYS = 30;
+  function timelineDue(rec) {
+    const v = new Date(rec.date + 'T00:00:00');
+    const monthEnd = (k) => endOfMonth(addMonths(new Date(v.getFullYear(), v.getMonth(), 1), k));
+    let d = null;
+    switch ((rec.timeline || '').trim()) {
+      case 'Immediate Requirement': d = addDays(v, 7); break;
+      case 'Within 15 Days': d = addDays(v, 15); break;
+      case '15 Days to 1 Months': d = addDays(v, 30); break;
+      case '1 to 2 Months': d = monthEnd(1); break;
+      case 'Above 2 Months': d = monthEnd(2); break;
+      default: return null;
+    }
+    const cap = addDays(v, TIMELINE_CAP_DAYS);
+    return d < cap ? d : cap;
+  }
+  function basisTag(basis) {
+    if (basis === 'assumed') return ' <span class="tag assumed" title="No date and no timeline given: end of the week after the visit">assumed</span>';
+    if (basis === 'timeline') return ' <span class="tag fromtl" title="No date given: deadline set from the Requirement Timeline, at most 30 days after the visit">from timeline</span>';
+    return '';
+  }
+
   function computeStaleCandidates() {
     const f = currentFilters();
     const allNamed = DATA.records.filter((r) => r.hasLead && !r.unnamedLead && r.hasCheckinTime);
@@ -1876,11 +1940,13 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     latestByLead.forEach((r) => {
       if (r.date !== lastDayByLead.get(leadKey(r.lead))) return; // someone has visited since
       const parsed = parseFollowUp(r.followUp, r.date);
-      let assumed = false, dueDate;
+      let assumed = false, basis = 'date', dueDate;
       if (parsed.date) {
         dueDate = parsed.date;
+      } else if ((dueDate = timelineDue(r))) {
+        basis = 'timeline';
       } else {
-        assumed = true;
+        assumed = true; basis = 'assumed';
         dueDate = addDays(mondayOf(new Date(r.date + 'T00:00:00')), 7); // Monday of the week AFTER the visit
       }
       const bucketMonday = mondayOf(dueDate);
@@ -1900,7 +1966,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
       // Existing Leads, draws on): has the rep ever been back to this lead
       // more than once, ever - regardless of the current filter?
       const everRevisited = (visitCounts.get(key) || 0) > 1;
-      stale.push({ r, days, assumed, weekLabel: weekLabelJS(bucketMonday), key, everRevisited, due: threshold });
+      stale.push({ r, days, assumed, basis, weekLabel: weekLabelJS(bucketMonday), key, everRevisited, due: threshold });
     });
     stale.sort((a, b) => b.days - a.days);
     return { stale, totalNamed: latestByLead.size };
@@ -1937,16 +2003,16 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
       // the rep's own raw text - the thing Due Week is calculated from.
       tr.innerHTML =
         '<td class="lead-cell">' + esc(r.lead) + histButton(r.lead) + '</td>' +
+        '<td class="exec-cell">' + esc(r.exec) + '</td>' +
         '<td class="time-cell">' + esc(r.time || '') + '</td>' +
         '<td>' + esc(r.value || '') + '</td>' +
         '<td>' + esc(r.leadType || '') + '</td>' +
         '<td class="loc-cell">' + esc(r.location || '') + '</td>' +
         '<td>' + esc(r.timeline || '') + '</td>' +
         '<td>' + esc(r.followUp || '(no date logged)') + '</td>' +
-        '<td>' + weekLabel + (assumed ? ' <span class="tag assumed">assumed</span>' : '') + '</td>' +
+        '<td>' + weekLabel + basisTag(s.basis) + '</td>' +
         '<td><span class="tag overdue">' + days + ' day' + (days === 1 ? '' : 's') + '</span>' +
           (days > 365 ? ' <span style="font-size:12px;color:var(--ink-secondary);">(check the logged date - likely a typo, not corrected here)</span>' : '') + '</td>' +
-        '<td>' + esc(r.exec) + '</td>' +
         '<td>' + satCell + '</td>' +
         '<td class="remarks-cell">' + esc(r.remarks || '') + '</td>';
       body.appendChild(tr);
@@ -1979,11 +2045,13 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
       for (let i = 0; i < visits.length - 1; i++) {
         const prev = visits[i], next = visits[i + 1];
         const parsed = parseFollowUp(prev.followUp, prev.date);
-        let assumed = false, dueDate;
+        let assumed = false, basis = 'date', dueDate;
         if (parsed.date) {
           dueDate = parsed.date;
+        } else if ((dueDate = timelineDue(prev))) {
+          basis = 'timeline';
         } else {
-          assumed = true;
+          assumed = true; basis = 'assumed';
           dueDate = addDays(mondayOf(new Date(prev.date + 'T00:00:00')), 7);
         }
         const threshold = assumed ? addDays(mondayOf(dueDate), 6) : dueDate;
@@ -1995,7 +2063,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
         if (f.month && assignedMonth !== f.month) continue;
         if (f.week && assignedWeekStart !== f.week) continue;
         if (f.exec && prev.exec !== f.exec) continue;
-        kept.push({ prev, next, assumed });
+        kept.push({ prev, next, assumed, basis });
       }
     });
     kept.sort((a, b) => (a.next.date < b.next.date ? 1 : -1));
@@ -2022,9 +2090,11 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
 
   function promiseDeadline(rec) {
     const p = parseFollowUp(rec.followUp, rec.date);
-    if (p.date) return { due: p.date, assumed: false };
-    // No usable date: until the Sunday of the week after the visit.
-    return { due: addDays(mondayOf(new Date(rec.date + 'T00:00:00')), 13), assumed: true };
+    if (p.date) return { due: p.date, assumed: false, basis: 'date' };
+    const t = timelineDue(rec);
+    if (t) return { due: t, assumed: false, basis: 'timeline' };
+    // No date and no timeline: until the Sunday of the week after the visit.
+    return { due: addDays(mondayOf(new Date(rec.date + 'T00:00:00')), 13), assumed: true, basis: 'assumed' };
   }
 
   function fmtDay(d) { return d.getDate() + ' ' + d.toLocaleString('en-US', { month: 'short' }) + ' ' + d.getFullYear(); }
@@ -2036,7 +2106,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     const reps = new Set(visits.map((v) => v.exec));
     let rows = '';
     visits.forEach((v, i) => {
-      const { due, assumed } = promiseDeadline(v);
+      const { due, assumed, basis } = promiseDeadline(v);
       const next = visits[i + 1];
       let outcome;
       if (next) {
@@ -2063,7 +2133,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
         '<td class="loc-cell">' + esc(v.location || '') + '</td>' +
         '<td>' + esc(v.timeline || '') + '</td>' +
         '<td>' + esc(v.followUp || '(no date logged)') + '</td>' +
-        '<td class="time-cell">' + fmtDay(due) + (assumed ? ' <span class="tag assumed">assumed</span>' : '') + '</td>' +
+        '<td class="time-cell">' + fmtDay(due) + basisTag(basis) + '</td>' +
         '<td>' + outcome + '</td>' +
         '<td>' + esc(v.exec) + '</td>' +
         '<td>' + sat + '</td>' +
@@ -2126,13 +2196,13 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
         // the one this row proves was kept.
         tr.innerHTML =
           '<td class="lead-cell">' + esc(k.prev.lead) + histButton(k.prev.lead) + '</td>' +
+          '<td class="exec-cell">' + esc(k.prev.exec) + '</td>' +
           '<td class="time-cell">' + esc(k.next.time || '') + '</td>' +
           '<td>' + esc(k.next.value || '') + '</td>' +
           '<td>' + esc(k.next.leadType || '') + '</td>' +
           '<td class="loc-cell">' + esc(k.next.location || '') + '</td>' +
           '<td>' + esc(k.next.timeline || '') + '</td>' +
-          '<td>' + esc(k.prev.followUp || '(no date logged)') + (k.assumed ? ' <span class="tag assumed">assumed</span>' : '') + '</td>' +
-          '<td>' + esc(k.prev.exec) + '</td>' +
+          '<td>' + esc(k.prev.followUp || '(no date logged)') + basisTag(k.basis) + '</td>' +
           '<td>' + satCell + '</td>' +
           '<td class="remarks-cell">' + esc(k.next.remarks || '') + '</td>';
         body.appendChild(tr);
@@ -2189,11 +2259,11 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     doc.text(period.text + '   |   As of ' + fmtDay(today) + '   |   ' + plural(stale.length, 'lead'), M, 51);
     doc.setFontSize(9); doc.setTextColor(60, 60, 60);
     doc.text(doc.splitTextToSize('Each lead below had a follow-up promised on your last visit. That date has passed and no visit has been logged since. ' +
-      'Please follow up and log each visit in LystLoc. Where no date was written, the deadline is taken as the end of the week after the visit (marked "assumed").', W - 2 * M), M, 67);
+      'Please follow up and log each visit in LystLoc. Where no date was written, the deadline comes from your Requirement Timeline, at most 30 days after the visit (marked "from timeline").', W - 2 * M), M, 67);
     const body = stale.map((s, i) => [
       String(i + 1), pdfText(s.r.lead), pdfText(s.r.time), pdfText(s.r.value), pdfText(s.r.leadType), pdfText(s.r.location),
       pdfText(s.r.timeline), pdfText(s.r.followUp || '(no date logged)'),
-      fmtDay(s.due) + (s.assumed ? ' (assumed)' : ''),
+      fmtDay(s.due) + (s.basis === 'timeline' ? ' (from timeline)' : s.basis === 'assumed' ? ' (assumed)' : ''),
       String(s.days) + (s.days > 365 ? ' (check date entered)' : ''),
       pdfText(s.r.satisfaction), pdfText(s.r.remarks),
     ]);
@@ -2245,12 +2315,12 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
       const later = list.filter((r) => r.exec !== f.exec && r.date > last.date)
         .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : minutesOf(a) - minutesOf(b)));
       if (!later.length) return;
-      const { due, assumed } = promiseDeadline(last);
+      const { due, assumed, basis } = promiseDeadline(last);
       const bucketMonday = mondayOf(due);
       if (f.month && monthLabelJS(bucketMonday) !== f.month) return;
       if (f.week && ymd(bucketMonday) !== f.week) return;
       const first = later[0];
-      out.push({ r: last, due, assumed, first, more: later.length - 1,
+      out.push({ r: last, due, assumed, basis, first, more: later.length - 1,
                  reps: [...new Set(later.map((x) => x.exec))], beforeDue: new Date(first.date + 'T00:00:00') <= due });
     });
     out.sort((a, b) => (a.first.date < b.first.date ? 1 : -1));
@@ -2285,7 +2355,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
         '<td class="loc-cell">' + esc(r.location || '') + '</td>' +
         '<td>' + esc(r.timeline || '') + '</td>' +
         '<td>' + esc(r.followUp || '(no date logged)') + '</td>' +
-        '<td class="time-cell">' + fmtDay(c.due) + (c.assumed ? ' <span class="tag assumed">assumed</span>' : '') + '</td>' +
+        '<td class="time-cell">' + fmtDay(c.due) + basisTag(c.basis) + '</td>' +
         '<td>' + esc(c.reps.join(', ')) + '</td>' +
         '<td class="time-cell">' + esc(c.first.time || '') + (c.more ? ' <span class="tag pending">+' + c.more + ' more</span>' : '') + '</td>' +
         '<td>' + (c.beforeDue ? '<span class="tag kept">Before due date</span>' : '<span class="tag late">After due date</span>') + '</td>' +
@@ -2319,7 +2389,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
       fmtNum(totalNamed) + ' named lead' + (totalNamed === 1 ? '' : 's') + ' tracked overall' + (f.exec ? ' for ' + f.exec : '') +
       ' &middot; ' + fmtNum(stale.length) + ' overdue for follow-up in the current Month / Week / Executive selection, cross-checked against all tracked history. ' +
       'How the Next Follow-up entry is read: a date (&ldquo;10-09-2026&rdquo;, &ldquo;3rd September&rdquo;) is due that day; a named day (&ldquo;Friday&rdquo;) is due the next time that day comes round; &ldquo;this week&rdquo; is due by this Sunday; &ldquo;next week&rdquo; by the end of next week; &ldquo;next month&rdquo; by the end of next month; &ldquo;October first week&rdquo; by 7 October; a spelled-out gap (&ldquo;in 2 days&rdquo;) is counted exactly. ' +
-      'An entry with no usable date (e.g. &ldquo;Follow Up&rdquo;, &ldquo;New&rdquo;) is given until the end of the week after the visit and marked &ldquo;assumed&rdquo;.';
+      'An entry with no usable date (e.g. &ldquo;Follow Up&rdquo;, &ldquo;New&rdquo;) takes its deadline from the Requirement Timeline, never more than 30 days after the visit: Immediate 7 days, Within 15 days 15 days, anything longer 30 days. Marked &ldquo;from timeline&rdquo;. Only a visit with no timeline either gets the end of the week after the visit, marked &ldquo;assumed&rdquo;.';
 
     // Flattened 23-Sep-2026 per Harsh's request: dropped the Never Followed Up /
     // Lapsed Again distinction entirely (both the Status column and the two
@@ -2584,14 +2654,27 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
         const byRep = {};
         rows.forEach((r) => { const e = r.exec || '(no executive)'; byRep[e] = (byRep[e] || 0) + 1; });
         const reps = Object.keys(byRep).sort((a, b) => byRep[b] - byRep[a] || a.localeCompare(b));
-        html += '<div class="rep-row"><span class="rep-row-label">' + reps.length + ' sales rep' + (reps.length === 1 ? '' : 's') + ' with these leads</span>' +
-          reps.map((e) => '<button type="button" class="rep-chip" data-exec="' + esc(e) + '" title="Open ' + esc(e) + '\'s view with these filters">' +
-            esc(e) + '<span class="rep-n">' + fmtNum(byRep[e]) + '</span></button>').join('') + '</div>';
+        const initials = (e) => e.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
+        html += '<div class="rep-panel"><div class="rep-panel-head">' +
+          '<span class="icon-badge sm tone-accent"><svg class="icon"><use href="#icon-users"></use></svg></span>' +
+          '<div><div class="rep-panel-title">' + reps.length + ' sales rep' + (reps.length === 1 ? '' : 's') + ' behind these ' + fmtNum(rows.length) + ' lead' + (rows.length === 1 ? '' : 's') + '</div>' +
+          '<div class="rep-panel-sub">Click a rep to open their full view. Your filters stay on.</div></div></div>' +
+          '<div class="rep-cards">' + reps.map((e) => {
+            const share = Math.round((byRep[e] / rows.length) * 100);
+            return '<button type="button" class="rep-card" data-exec="' + esc(e) + '" title="Open ' + esc(e) + '\'s view with these filters">' +
+              '<span class="rep-avatar">' + esc(initials(e)) + '</span>' +
+              '<span class="rep-meta"><span class="rep-name">' + esc(e) + '</span>' +
+              '<span class="rep-count"><strong class="rep-n">' + fmtNum(byRep[e]) + '</strong> lead' + (byRep[e] === 1 ? '' : 's') + '</span>' +
+              '<span class="rep-share"><span style="width:' + Math.max(share, 2) + '%;"></span></span></span>' +
+              '<span class="rep-go">Open &rarr;</span></button>';
+          }).join('') + '</div></div>';
       } else if (activeFilterCount() === 1) {
         html += '<p class="rep-hint">Add one more filter to see which sales reps these leads belong to.</p>';
       }
-    } else if (activeFilterCount() >= 2) {
-      html += '<div class="rep-back-row"><span>Showing <strong>' + esc(execSel.value) + '</strong> only</span><button type="button" class="rep-back">&larr; Back to all executives</button></div>';
+    } else if (activeFilterCount() >= 1) {
+      html += '<div class="rep-viewing"><span class="rep-viewing-text"><span class="icon-badge sm tone-accent"><svg class="icon"><use href="#icon-users"></use></svg></span>' +
+        '<span>Viewing <strong>' + esc(execSel.value) + '</strong> only: ' + fmtNum(rows.length) + ' matching lead' + (rows.length === 1 ? '' : 's') + '</span></span>' +
+        '<button type="button" class="rep-back">&larr; Back to all sales executives</button></div>';
     }
     if (rows.length === 0) {
       html += '<p class="empty-state" style="padding:24px;">No leads match this combination.</p>';
@@ -2620,7 +2703,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
       sel.dispatchEvent(new Event('change'));
       document.getElementById('breakdown').scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
-    wrap.querySelectorAll('.rep-chip').forEach((btn) => btn.addEventListener('click', () => switchExec(btn.dataset.exec)));
+    wrap.querySelectorAll('.rep-chip, .rep-card').forEach((btn) => btn.addEventListener('click', () => switchExec(btn.dataset.exec)));
     const back = wrap.querySelector('.rep-back');
     if (back) back.addEventListener('click', () => switchExec(''));
     wrap.querySelectorAll('.filter-chip-x').forEach((btn) => {
@@ -2763,6 +2846,10 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
 
   function renderAll() {
     const records = filteredRecords();
+    const repView = !!currentFilters().exec;
+    ['newLeadsTable', 'existingLeadsTable', 'keptTable', 'staleOverdueTable'].forEach((id) => {
+      const t = document.getElementById(id); if (t) t.classList.toggle('rep-view', repView);
+    });
     renderOverview(records);
     renderBreakdown(records);
     renderLeadsTable('newLeads', records);
@@ -2784,7 +2871,13 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
   });
 
   populateSelect('monthSelect', DATA.months.map((m) => ({ value: m, label: m })), 'All Months');
+  // Open on the most recent week in the data, and its month, so the first
+  // view is always this week's picture. "All Weeks" / "All Months" are still
+  // one click away.
+  const latestWeek = DATA.weeks[DATA.weeks.length - 1];
+  if (latestWeek) document.getElementById('monthSelect').value = latestWeek.month;
   refreshWeekOptions();
+  if (latestWeek) document.getElementById('weekSelect').value = latestWeek.start;
   populateSelect('execSelect', DATA.execs.map((e) => ({ value: e, label: e })), 'All Executives');
   renderFooter();
 
