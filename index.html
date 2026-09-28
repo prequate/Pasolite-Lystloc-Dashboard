@@ -495,6 +495,81 @@
     .m-more:active{background:var(--surface-3);}
     .detail-panel .m-more{width:calc(100% - 20px); margin:0 10px 10px;}
   }
+  /* ---------- Tabs, rep groups and "you are here" bar (28-Sep-2026, per
+     Harsh: with All Executives the page got too long to know where you
+     were). 1. The section links are tabs: one section shows at a time.
+     2. With All Executives, every list in Sections 2 to 5 is grouped by
+     sales rep, collapsed, with a count. 3. A thin bar under the header
+     always names the section, the table and the rep group in view. */
+  section.block.tab-hidden{display:none !important;}
+  section.block:not(.tab-hidden){margin-top:0;}
+  .quicknav a{display:inline-flex; align-items:center; gap:7px;}
+  .quicknav a.tab-active{color:#fff; border-bottom-color:var(--accent);}
+  .tab-badge{display:inline-block; min-width:18px; padding:1px 6px; border-radius:999px; background:rgba(255,255,255,0.14); color:#fff; font-size:10.5px; font-weight:700; letter-spacing:0; text-align:center; line-height:15px;}
+  .quicknav a.tab-active .tab-badge{background:var(--accent);}
+  .here-bar{background:var(--surface); border-bottom:1px solid var(--border); padding:0 clamp(20px,4vw,48px);}
+  .here-inner{max-width:1180px; margin:0 auto; display:flex; align-items:center; gap:8px; min-height:34px; font-size:12px; color:var(--ink-secondary); white-space:nowrap; overflow:hidden;}
+  .here-sec{font-weight:700; color:var(--ink);}
+  .here-sep{color:var(--ink-muted);}
+  .here-sub, .here-rep{overflow:hidden; text-overflow:ellipsis;}
+  .here-rep{font-weight:700; color:var(--accent-deep);}
+  .here-empty{display:none;}
+  table.leads > tbody > tr.rep-tools > td{background:var(--surface) !important; padding:8px 14px; font-size:11.5px; color:var(--ink-muted); border-bottom:1px solid var(--border);}
+  .rep-tools button{font-family:inherit; font-size:11.5px; font-weight:700; color:var(--ink-secondary); background:none; border:none; padding:0 0 0 12px; cursor:pointer; text-decoration:underline; text-underline-offset:2px;}
+  .rep-tools button:hover{color:var(--ink);}
+  table.leads > tbody > tr.rep-group > td{background:var(--surface-3) !important; padding:0; border-bottom:1px solid var(--border);}
+  .rep-group-btn{display:flex; align-items:center; gap:10px; width:100%; text-align:left; font-family:inherit; font-size:13px; font-weight:700; color:var(--ink);
+    background:none; border:none; padding:10px 14px; cursor:pointer;}
+  .rep-group-btn:hover{background:rgba(22,22,22,0.04);}
+  .rep-group-btn .chev{display:inline-block; width:12px; color:var(--ink-muted); transition:transform .15s ease;}
+  tr.rep-group.open .rep-group-btn .chev{transform:rotate(90deg);}
+  .rep-group-btn .rg-count{font-size:11.5px; font-weight:700; color:var(--ink-secondary); background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:1px 9px;}
+  .rep-group-btn .rg-hint{margin-left:auto; font-size:11px; font-weight:600; color:var(--ink-muted);}
+  table.leads > tbody > tr.g-hidden{display:none !important;}
+  @media (max-width: 640px){
+    .here-bar{padding:0 12px;}
+    .here-inner{min-height:30px; font-size:11.5px;}
+    section.block{scroll-margin-top:150px;}
+    table.leads > tbody > tr.rep-group, table.leads > tbody > tr.rep-tools{padding:0; border:none; box-shadow:none; background:transparent !important; margin:0 0 8px;}
+    table.leads > tbody > tr.rep-group > td, table.leads > tbody > tr.rep-tools > td{display:block; padding:0; margin:0; border:1px solid var(--border); border-radius:12px; font-size:13px; font-weight:700;}
+    table.leads > tbody > tr.rep-tools > td{border:none; padding:2px 2px 4px; font-weight:400; font-size:11.5px;}
+    table.leads > tbody > tr.rep-group > td::before, table.leads > tbody > tr.rep-tools > td::before{content:none;}
+    .rep-group-btn{padding:12px 14px;}
+  }
+  /* UI 5 + UI 4: Team Scoreboard and slide-in drawer (28-Sep-2026 mock). */
+  .sb-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:12px; margin-top:12px;}
+  table.sb{border-collapse:separate; border-spacing:0; width:100%; min-width:760px; font-size:13px;}
+  table.sb th{background:var(--ink); color:#fff; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; padding:10px 12px; text-align:center; cursor:pointer; user-select:none; white-space:nowrap;}
+  table.sb th:first-child{text-align:left;}
+  table.sb th .arrow{color:var(--accent); margin-left:4px; font-size:10px;}
+  table.sb td{padding:0; border-bottom:1px solid var(--border-soft); text-align:center;}
+  table.sb td.sb-rep{text-align:left; padding:0;}
+  table.sb tr.sb-me td{box-shadow:inset 0 0 0 9999px rgba(225,55,43,0.05);}
+  .sb-rep-btn{display:flex; align-items:center; gap:8px; width:100%; font-family:inherit; font-size:13px; font-weight:700; color:var(--ink); background:none; border:none; padding:10px 12px; cursor:pointer; text-align:left;}
+  .sb-rep-btn:hover{color:var(--accent-deep);}
+  .sb-rep-btn .sb-go{margin-left:auto; font-size:11px; color:var(--ink-muted); font-weight:600;}
+  .sb-cell{display:block; width:100%; font-family:inherit; font-size:14px; font-weight:700; color:var(--ink); border:none; padding:10px 8px; cursor:pointer; background:transparent;}
+  .sb-cell:hover{outline:2px solid var(--ink); outline-offset:-2px;}
+  .sb-cell.zero{color:var(--ink-muted); font-weight:400; cursor:default;}
+  .sb-cell.zero:hover{outline:none;}
+  table.sb tr.sb-total td{background:var(--surface-2); font-weight:700; border-top:2px solid var(--border);}
+  table.sb tr.sb-total .sb-cell{cursor:default;} table.sb tr.sb-total .sb-cell:hover{outline:none;}
+  .sb-legend{display:flex; flex-wrap:wrap; gap:14px; font-size:11.5px; color:var(--ink-muted); margin-top:10px;}
+  .sb-legend i{display:inline-block; width:22px; height:10px; border-radius:3px; vertical-align:-1px; margin-right:6px;}
+  .drawer-back{position:fixed; inset:0; background:rgba(22,22,22,0.35); z-index:90; opacity:0; pointer-events:none; transition:opacity .18s ease;}
+  .drawer{position:fixed; top:0; right:0; bottom:0; width:min(880px, 94vw); background:var(--surface); z-index:91; box-shadow:-12px 0 30px rgba(22,22,22,0.18);
+    transform:translateX(102%); transition:transform .22s ease; display:flex; flex-direction:column;}
+  body.drawer-open .drawer{transform:none;} body.drawer-open .drawer-back{opacity:1; pointer-events:auto;}
+  .drawer-head{display:flex; align-items:flex-start; gap:12px; padding:16px 20px; border-bottom:1px solid var(--border); background:var(--ink); color:#fff;}
+  .drawer-head h3{font-size:16px; color:#fff;}
+  .drawer-head p{margin:3px 0 0; font-size:12px; color:rgba(255,255,255,0.65);}
+  .drawer-close{margin-left:auto; background:none; border:1px solid rgba(255,255,255,0.3); color:#fff; border-radius:8px; font-size:13px; font-weight:700; padding:5px 10px; cursor:pointer; font-family:inherit;}
+  .drawer-body{flex:1; overflow:auto; padding:14px 18px 20px;}
+  .drawer-foot{padding:12px 18px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end;}
+  .drawer-foot button{font-family:inherit; font-size:12.5px; font-weight:700; border-radius:8px; padding:8px 14px; cursor:pointer; border:1px solid var(--ink); background:var(--ink); color:#fff;}
+  .drawer .table-wrap{margin:0;}
+  .drawer table.leads{min-width:760px;}
+  @media (max-width: 640px){ .drawer{width:100vw;} .drawer-body{padding:10px;} .drawer table.leads{min-width:0;} }
 </style>
 </head>
 <body>
@@ -628,6 +703,7 @@
 
   <div class="quicknav">
     <div class="quicknav-inner">
+      <a href="#scoreboard">Scoreboard</a>
       <a href="#overview">Overview</a>
       <a href="#breakdown">Lead Mix</a>
       <a href="#stale">Follow-up Watch</a>
@@ -636,9 +712,33 @@
       <a href="#nocheckin">Missed Days</a>
     </div>
   </div>
+  <div class="here-bar" id="hereBar"><div class="here-inner">
+    <span class="here-sec" id="hereSec"></span>
+    <span class="here-sep" id="hereSep1">&rsaquo;</span><span class="here-sub" id="hereSub"></span>
+    <span class="here-sep" id="hereSep2">&rsaquo;</span><span class="here-rep" id="hereRep"></span>
+  </div></div>
 </div>
 
 <div class="wrap">
+
+  <section class="block" id="scoreboard">
+    <div class="block-head">
+      <div class="block-head-left">
+        <span class="icon-badge tone-accent"><svg class="icon"><use href="#icon-users"></use></svg></span>
+        <div>
+          <div class="block-eyebrow">Team Scoreboard</div>
+          <h2>Who needs attention</h2>
+        </div>
+      </div>
+      <span class="block-hint">Click any number to see the leads behind it</span>
+    </div>
+    <div class="sb-wrap"><table class="sb" id="sbTable"></table></div>
+    <div class="sb-legend">
+      <span><i style="background:rgba(46,125,140,0.35)"></i>Activity: darker = more</span>
+      <span><i style="background:rgba(47,143,91,0.45)"></i>Followed up on time: darker = more</span>
+      <span><i style="background:rgba(178,58,46,0.45)"></i>Overdue and missed days: darker = more to act on</span>
+    </div>
+  </section>
 
   <section class="block" id="overview">
     <div class="block-head">
@@ -838,6 +938,13 @@
   <div class="info-panel" id="footerInfoPanel"></div>
 
 </div>
+
+<div class="drawer-back" id="drawerBack"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head"><div><h3 id="drawerTitle"></h3><p id="drawerSub"></p></div><button type="button" class="drawer-close" id="drawerClose">Close &times;</button></div>
+  <div class="drawer-body" id="drawerBody"></div>
+  <div class="drawer-foot"><button type="button" id="drawerOpenRep"></button></div>
+</aside>
 
 <script>/* jsPDF 4.2.1 (MIT licence) */
 /** @license
@@ -1507,6 +1614,9 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026"], "weeks": [{
     const f = currentFilters();
     return DATA.records.filter((r) => {
       if (r.hasCheckinTime) return false;
+      // Sundays are not working days: left out of Missed Days entirely
+      // (28-Sep-2026, per Harsh), so they no longer pad the list.
+      if (r.dayType && r.dayType.indexOf('Sunday') !== -1) return false;
       if (f.month && r.month !== f.month) return false;
       if (f.week && r.weekStart !== f.week) return false;
       if (f.exec && r.exec !== f.exec) return false;
@@ -2511,6 +2621,7 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026"], "weeks": [{
       const sel = document.getElementById('execSelect');
       sel.value = value;
       sel.dispatchEvent(new Event('change'));
+      if (typeof showTab === 'function') showTab('breakdown', false);
       document.getElementById('breakdown').scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
     wrap.querySelectorAll('.rep-chip, .rep-card').forEach((btn) => btn.addEventListener('click', () => switchExec(btn.dataset.exec)));
@@ -2570,17 +2681,12 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026"], "weeks": [{
   function renderNoCheckin() {
     const records = noCheckinRecords();
     const unexplained = records.filter((r) => !r.dayType).length;
-    const sunday = records.filter((r) => r.dayType && r.dayType.indexOf('Sunday') !== -1).length;
     const holiday = records.filter((r) => r.dayType && r.dayType.indexOf('Sunday') === -1).length;
 
     document.getElementById('noCheckinPillRow').innerHTML =
       '<div class="pill">' +
         '<span class="daytype-icon gap" style="width:32px;height:32px;"><svg class="icon" style="width:16px;height:16px;"><use href="#icon-alert-triangle"></use></svg></span>' +
-        '<div><div class="pv num">' + fmtNum(unexplained) + '</div><div class="pl">Genuinely unexplained</div></div>' +
-      '</div>' +
-      '<div class="pill">' +
-        '<span class="daytype-icon sun" style="width:32px;height:32px;"><svg class="icon" style="width:16px;height:16px;"><use href="#icon-sun"></use></svg></span>' +
-        '<div><div class="pv num">' + fmtNum(sunday) + '</div><div class="pl">Sundays</div></div>' +
+        '<div><div class="pv num">' + fmtNum(unexplained) + '</div><div class="pl">Unexplained</div></div>' +
       '</div>' +
       '<div class="pill">' +
         '<span class="daytype-icon holiday" style="width:32px;height:32px;"><svg class="icon" style="width:16px;height:16px;"><use href="#icon-star"></use></svg></span>' +
@@ -2589,7 +2695,7 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026"], "weeks": [{
 
     document.getElementById('noCheckinInfoPanel').innerHTML =
       'Days where a sales executive had a LystLoc entry but logged no Checkin Time at all - no visit actually happened, so these are excluded from Forms Submitted above and listed here instead, for the current Month / Week / Executive selection. ' +
-      'Day Type flags a Sunday or a national public holiday on that date, as a possible explanation; hover an icon in the table to see which one.';
+      'Sundays are left out. Day Type flags a national public holiday on that date, as a possible explanation; hover an icon in the table to see which one.';
 
     const body = document.getElementById('noCheckinBody');
     body.innerHTML = '';
@@ -2666,6 +2772,7 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026"], "weeks": [{
     renderLeadsTable('existingLeads', records);
     renderStale();
     renderNoCheckin();
+    if (typeof renderScoreboard === 'function') renderScoreboard();
   }
 
   // ---- generic "ⓘ" info-button toggle ---------------------------------
@@ -2730,8 +2837,8 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026"], "weeks": [{
   function paginate(table) {
     const body = table.tBodies[0];
     if (!body) return;
-    const rows = [...body.rows].filter((tr) => !tr.classList.contains('history-row') && !tr.querySelector(':scope > td.empty-state'));
-    const phone = PHONE_MQ.matches;
+    const rows = [...body.rows].filter((tr) => !tr.classList.contains('history-row') && !tr.classList.contains('rep-group') && !tr.classList.contains('rep-tools') && !tr.querySelector(':scope > td.empty-state'));
+    const phone = PHONE_MQ.matches && !table.classList.contains('grouped');
     const limit = table._mLimit || PAGE_STEP;
     rows.forEach((tr, i) => {
       const hide = phone && i >= limit;
@@ -2798,8 +2905,239 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026"], "weeks": [{
   ['monthSelect', 'weekSelect', 'execSelect'].forEach((id) => document.getElementById(id).addEventListener('change', updateFilterSummary));
   updateFilterSummary();
 
+
+  // ---- Tabs, rep groups, "you are here" bar (28-Sep-2026) ---------------
+  const TAB_IDS = ['scoreboard', 'overview', 'breakdown', 'stale', 'newleads', 'existingleads', 'nocheckin'];
+  let activeTab = 'scoreboard';
+  function showTab(id, scroll) {
+    if (!TAB_IDS.includes(id)) id = 'overview';
+    activeTab = id;
+    TAB_IDS.forEach((t) => { const sec = document.getElementById(t); if (sec) sec.classList.toggle('tab-hidden', t !== id); });
+    document.querySelectorAll('.quicknav a').forEach((a) => a.classList.toggle('tab-active', a.getAttribute('href') === '#' + id));
+    const link = document.querySelector('.quicknav a[href="#' + id + '"]');
+    if (link && link.scrollIntoView && window.matchMedia('(max-width: 640px)').matches) link.scrollIntoView({ block: 'nearest', inline: 'center' });
+    try { history.replaceState(null, '', '#' + id); } catch (e) {}
+    if (scroll !== false) window.scrollTo({ top: 0 });
+    updateHereBar();
+  }
+  document.querySelectorAll('.quicknav a').forEach((a) => {
+    const id = a.getAttribute('href').slice(1);
+    const badge = document.createElement('span'); badge.className = 'tab-badge'; badge.style.display = 'none'; badge.id = 'tabBadge-' + id;
+    a.appendChild(badge);
+    a.addEventListener('click', (e) => { e.preventDefault(); showTab(id); });
+  });
+  function updateTabBadges() {
+    const num = (sel) => { const el = document.querySelector(sel); if (!el) return null; const m = /[\d,]+/.exec(el.textContent); return m ? m[0] : null; };
+    const pv = document.querySelectorAll('#stalePillRow .pv');
+    const vals = { stale: pv[1] ? pv[1].textContent : null, newleads: num('#newLeadsRowCount'), existingleads: num('#existingLeadsRowCount'),
+      nocheckin: (document.querySelector('#noCheckinPillRow .pv') || {}).textContent || null };
+    Object.keys(vals).forEach((k) => { const b = document.getElementById('tabBadge-' + k); if (!b) return;
+      const v = vals[k] || ''; if (b.textContent !== v) b.textContent = v; const d = v ? '' : 'none'; if (b.style.display !== d) b.style.display = d; });
+  }
+
+  // Group rows by sales rep (All Executives only). Each group starts
+  // collapsed; groups you open stay open when the list re-renders.
+  const GROUPED = { keptTable: { col: 'exec', noun: ['follow-up on time', 'follow-ups on time'] },
+    staleOverdueTable: { col: 'exec', noun: ['overdue', 'overdue'] },
+    newLeadsTable: { col: 'exec', noun: ['new lead', 'new leads'] },
+    existingLeadsTable: { col: 'exec', noun: ['existing lead', 'existing leads'] },
+    noCheckinTable: { col: 0, noun: ['missed day', 'missed days'] } };
+  function groupTable(table) {
+    const cfg = GROUPED[table.id]; const body = table.tBodies[0];
+    if (!cfg || !body) return;
+    const allExecs = !document.getElementById('execSelect').value;
+    const rows = [...body.rows].filter((tr) => !tr.classList.contains('history-row'));
+    const first = rows[0];
+    if (!allExecs || !first || first.classList.contains('rep-group') || first.classList.contains('rep-tools') || first.querySelector(':scope > td.empty-state')) {
+      if (!allExecs) table.classList.remove('grouped');
+      return;
+    }
+    table._open = table._open || new Set();
+    const ncols = table.tHead.rows[0].cells.length;
+    const nameOf = (tr) => { const td = cfg.col === 'exec' ? tr.querySelector(':scope > td.exec-cell') : tr.cells[cfg.col]; return td ? td.textContent.trim() : '(unknown)'; };
+    const groups = new Map();
+    rows.forEach((tr) => { const n = nameOf(tr); if (!groups.has(n)) groups.set(n, []); groups.get(n).push(tr); });
+    const order = [...groups.keys()].sort((a, b) => groups.get(b).length - groups.get(a).length || a.localeCompare(b));
+    const frag = document.createDocumentFragment();
+    const tools = document.createElement('tr'); tools.className = 'rep-tools';
+    tools.innerHTML = '<td colspan="' + ncols + '">Grouped by sales executive, most first. Click a name to open it.' +
+      '<button type="button" data-act="open">Expand all</button><button type="button" data-act="close">Collapse all</button></td>';
+    frag.appendChild(tools);
+    order.forEach((name) => {
+      const list = groups.get(name), open = table._open.has(name);
+      const gh = document.createElement('tr'); gh.className = 'rep-group' + (open ? ' open' : ''); gh.dataset.rep = name;
+      const n = list.length;
+      gh.innerHTML = '<td colspan="' + ncols + '"><button type="button" class="rep-group-btn" aria-expanded="' + open + '"><span class="chev">&#9656;</span>' +
+        esc(name) + '<span class="rg-count">' + fmtNum(n) + ' ' + (n === 1 ? cfg.noun[0] : cfg.noun[1]) + '</span><span class="rg-hint">' + (open ? 'Hide' : 'Show') + '</span></button></td>';
+      frag.appendChild(gh);
+      list.forEach((tr) => { tr.classList.toggle('g-hidden', !open); tr.dataset.group = name; frag.appendChild(tr); });
+    });
+    table.classList.add('grouped');
+    body.appendChild(frag);
+  }
+  function setGroupOpen(table, gh, open) {
+    const name = gh.dataset.rep;
+    gh.classList.toggle('open', open);
+    const btn = gh.querySelector('.rep-group-btn'); btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.querySelector('.rg-hint').textContent = open ? 'Hide' : 'Show';
+    if (open) table._open.add(name); else table._open.delete(name);
+    let tr = gh.nextElementSibling;
+    while (tr && !tr.classList.contains('rep-group')) { tr.classList.toggle('g-hidden', !open); tr = tr.nextElementSibling; }
+  }
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.rep-group-btn, .rep-tools button'); if (!btn) return;
+    const table = btn.closest('table'); if (!table) return;
+    if (btn.classList.contains('rep-group-btn')) { const gh = btn.closest('tr.rep-group'); setGroupOpen(table, gh, !gh.classList.contains('open')); }
+    else { const open = btn.dataset.act === 'open'; table.querySelectorAll(':scope > tbody > tr.rep-group').forEach((gh) => setGroupOpen(table, gh, open)); }
+    updateHereBar();
+  });
+  new MutationObserver((muts) => {
+    const touched = new Set();
+    muts.forEach((m) => { const el = m.target.nodeType === 1 ? m.target : m.target.parentElement; const t = el && el.closest('table');
+      if (t && GROUPED[t.id]) touched.add(t); });
+    touched.forEach(groupTable);
+    updateTabBadges();
+  }).observe(document.body, { childList: true, subtree: true });
+
+  // "You are here": section, table and rep group in view.
+  function updateHereBar() {
+    const sec = document.getElementById(activeTab); if (!sec) return;
+    const eyebrow = sec.querySelector('.block-eyebrow'), title = sec.querySelector('.block-head h2');
+    const secText = (eyebrow ? eyebrow.textContent.trim() : '') + (title ? ' · ' + title.textContent.replace(/\s+/g, ' ').trim() : '');
+    const setT = (id, v) => { const el = document.getElementById(id); if (el.textContent !== v) el.textContent = v; };
+    setT('hereSec', secText);
+    const line = document.querySelector('.sticky-head').getBoundingClientRect().bottom + 12;
+    let sub = '';
+    sec.querySelectorAll('.block-head h2').forEach((h, i) => { if (i === 0 || !h.offsetParent) return; if (h.getBoundingClientRect().top < line) sub = h.textContent.trim(); });
+    let repName = '';
+    sec.querySelectorAll('table.grouped tr.rep-group.open').forEach((gh) => {
+      if (gh.getBoundingClientRect().top > line) return;
+      let last = gh, tr = gh.nextElementSibling;
+      while (tr && !tr.classList.contains('rep-group')) { last = tr; tr = tr.nextElementSibling; }
+      if (last.getBoundingClientRect().bottom > line) repName = gh.dataset.rep;
+    });
+    const subEl = document.getElementById('hereSub'), repEl = document.getElementById('hereRep');
+    setT('hereSub', sub); setT('hereRep', repName);
+    document.getElementById('hereSep1').classList.toggle('here-empty', !sub);
+    document.getElementById('hereSep2').classList.toggle('here-empty', !repName);
+  }
+
+  // ---- UI 5: Team Scoreboard + UI 4: drawer --------------------------------
+  const SB_COLS = [
+    { key: 'forms', label: 'Forms', tone: '46,125,140', tab: 'overview' },
+    { key: 'newl', label: 'New Leads', tone: '46,125,140', tab: 'newleads' },
+    { key: 'exist', label: 'Existing Leads', tone: '46,125,140', tab: 'existingleads' },
+    { key: 'kept', label: 'Followed Up On Time', tone: '47,143,91', tab: 'stale' },
+    { key: 'overdue', label: 'Overdue', tone: '178,58,46', tab: 'stale' },
+    { key: 'missed', label: 'Missed Days', tone: '178,58,46', tab: 'nocheckin' },
+  ];
+  let sbSort = { key: 'overdue', dir: -1 };
+  function withExec(exec, fn) {
+    const sel = document.getElementById('execSelect'), prev = sel.value;
+    sel.value = exec;
+    try { return fn(); } finally { sel.value = prev; }
+  }
+  function repStats(exec) {
+    return withExec(exec, () => {
+      const recs = filteredRecords();
+      const leads = recs.filter((r) => r.hasLead);
+      return { forms: recs.length, newl: leads.filter((r) => r.isNew).length, exist: leads.filter((r) => r.isExisting).length,
+        kept: computeFollowedUpOnTime().length, overdue: computeStaleCandidates().stale.length,
+        missed: noCheckinRecords().filter((r) => !r.dayType).length };
+    });
+  }
+  function renderScoreboard() {
+    const t = document.getElementById('sbTable'); if (!t) return;
+    const rows = DATA.execs.map((e) => Object.assign({ exec: e }, repStats(e)));
+    const max = {}; SB_COLS.forEach((c) => { max[c.key] = Math.max(1, ...rows.map((r) => r[c.key])); });
+    rows.sort((a, b) => (a[sbSort.key] - b[sbSort.key]) * sbSort.dir || a.exec.localeCompare(b.exec));
+    const cur = document.getElementById('execSelect').value;
+    const total = {}; SB_COLS.forEach((c) => { total[c.key] = rows.reduce((n, r) => n + r[c.key], 0); });
+    let html = '<thead><tr><th data-sort="exec">Sales Executive' + (sbSort.key === 'exec' ? '<span class="arrow">' + (sbSort.dir === 1 ? '&#9650;' : '&#9660;') + '</span>' : '') + '</th>' +
+      SB_COLS.map((c) => '<th data-sort="' + c.key + '">' + c.label + (sbSort.key === c.key ? '<span class="arrow">' + (sbSort.dir === 1 ? '&#9650;' : '&#9660;') + '</span>' : '') + '</th>').join('') + '</tr></thead><tbody>';
+    rows.forEach((r) => {
+      html += '<tr class="' + (r.exec === cur ? 'sb-me' : '') + '"><td class="sb-rep"><button type="button" class="sb-rep-btn" data-exec="' + esc(r.exec) + '">' + esc(r.exec) + '<span class="sb-go">Open &rsaquo;</span></button></td>';
+      SB_COLS.forEach((c) => {
+        const v = r[c.key], a = v ? (0.08 + 0.42 * v / max[c.key]).toFixed(3) : 0;
+        html += '<td style="' + (v ? 'background:rgba(' + c.tone + ',' + a + ')' : '') + '"><button type="button" class="sb-cell' + (v ? '' : ' zero') + '" data-exec="' + esc(r.exec) + '" data-key="' + c.key + '"' + (v ? '' : ' disabled') + '>' + (v ? fmtNum(v) : '&ndash;') + '</button></td>';
+      });
+      html += '</tr>';
+    });
+    html += '<tr class="sb-total"><td class="sb-rep"><span class="sb-rep-btn" style="cursor:default">Team total</span></td>' + SB_COLS.map((c) => '<td><span class="sb-cell">' + fmtNum(total[c.key]) + '</span></td>').join('') + '</tr></tbody>';
+    if (t._html !== html) { t.innerHTML = html; t._html = html; }
+  }
+  document.addEventListener('click', (e) => {
+    const th = e.target.closest('table.sb th[data-sort]');
+    if (th) { const k = th.dataset.sort; sbSort = { key: k, dir: sbSort.key === k ? -sbSort.dir : (k === 'exec' ? 1 : -1) }; renderScoreboard(); return; }
+    const rb = e.target.closest('.sb-rep-btn[data-exec]');
+    if (rb) { openRep(rb.dataset.exec, 'stale'); return; }
+    const cell = e.target.closest('.sb-cell[data-key]:not(.zero)');
+    if (cell) openDrawer(cell.dataset.exec, cell.dataset.key);
+  });
+  function openRep(exec, tab) {
+    closeDrawer();
+    const sel = document.getElementById('execSelect'); sel.value = exec; sel.dispatchEvent(new Event('change'));
+    showTab(tab);
+  }
+  const D_COLS = {
+    lead: (r) => '<td class="lead-cell">' + esc(r.lead || '(no lead logged)') + '</td>', time: (r) => '<td class="time-cell">' + esc(r.time || '') + '</td>',
+    value: (r) => '<td>' + esc(r.value || '') + '</td>', type: (r) => '<td>' + esc(r.leadType || '') + '</td>',
+    loc: (r) => '<td class="loc-cell">' + esc(r.location || '') + '</td>', tl: (r) => '<td>' + esc(r.timeline || '') + '</td>',
+    fu: (r) => '<td>' + esc(r.followUp || '') + '</td>', sat: (r) => '<td>' + esc(r.satisfaction || '') + '</td>', rem: (r) => '<td class="remarks-cell">' + esc(r.remarks || '') + '</td>',
+  };
+  function drawerTable(heads, rowsHtml) {
+    return '<div class="table-wrap"><table class="leads"><thead><tr>' + heads.map((h) => '<th>' + h + '</th>').join('') + '</tr></thead><tbody>' +
+      (rowsHtml.length ? rowsHtml.join('') : '<tr><td colspan="' + heads.length + '" class="empty-state">Nothing in this selection.</td></tr>') + '</tbody></table></div>';
+  }
+  let drawerCtx = null;
+  function openDrawer(exec, key) {
+    const col = SB_COLS.find((c) => c.key === key); drawerCtx = { exec, tab: col.tab };
+    let html = '', n = 0;
+    const std = ['Lead', 'Time', 'Est. Project Value', 'Type of Lead', 'Location', 'Requirement Timeline', 'Next Follow-up'];
+    withExec(exec, () => {
+      if (key === 'overdue') {
+        const st = computeStaleCandidates().stale; n = st.length;
+        html = drawerTable(std.concat(['Due Week', 'Days Overdue']), st.map((x) => { const r = x.r;
+          return '<tr>' + D_COLS.lead(r) + D_COLS.time(r) + D_COLS.value(r) + D_COLS.type(r) + D_COLS.loc(r) + D_COLS.tl(r) + '<td>' + esc(r.followUp || '(no date logged)') + '</td>' +
+            '<td>' + x.weekLabel + basisTag(x.basis) + '</td><td><span class="tag overdue">' + x.days + ' day' + (x.days === 1 ? '' : 's') + '</span></td></tr>'; }));
+      } else if (key === 'kept') {
+        const k = computeFollowedUpOnTime(); n = k.length;
+        html = drawerTable(['Lead', 'Came Back On', 'Est. Project Value', 'Type of Lead', 'Location', 'Requirement Timeline', 'Next Follow-up (promised)'], k.map((x) =>
+          '<tr><td class="lead-cell">' + esc(x.prev.lead) + '</td>' + D_COLS.time(x.next) + D_COLS.value(x.next) + D_COLS.type(x.next) + D_COLS.loc(x.next) + D_COLS.tl(x.next) +
+          '<td>' + esc(x.prev.followUp || '(no date logged)') + basisTag(x.basis) + '</td></tr>'));
+      } else if (key === 'missed') {
+        const m = noCheckinRecords().filter((r) => !r.dayType); n = m.length;
+        html = drawerTable(['Date', 'Week'], m.map((r) => '<tr><td class="lead-cell">' + esc(r.dateDisplay || r.date) + '</td><td>' + esc(r.weekLabel || '') + '</td></tr>'));
+      } else {
+        let recs = filteredRecords();
+        if (key === 'newl') recs = recs.filter((r) => r.hasLead && r.isNew);
+        if (key === 'exist') recs = recs.filter((r) => r.hasLead && r.isExisting);
+        n = recs.length;
+        html = drawerTable(std.concat(['Client Satisfaction', 'Remarks']), recs.map((r) => '<tr>' + D_COLS.lead(r) + D_COLS.time(r) + D_COLS.value(r) + D_COLS.type(r) + D_COLS.loc(r) + D_COLS.tl(r) + D_COLS.fu(r) + D_COLS.sat(r) + D_COLS.rem(r) + '</tr>'));
+      }
+    });
+    const f = currentFilters();
+    const wk = f.week ? (DATA.weeks.find((w) => w.start === f.week) || {}).label : (f.month || 'All weeks');
+    document.getElementById('drawerTitle').textContent = exec + ' · ' + col.label + ' · ' + fmtNum(n);
+    document.getElementById('drawerSub').textContent = wk + (key === 'overdue' ? '. Longest overdue first.' : '');
+    document.getElementById('drawerBody').innerHTML = html;
+    document.getElementById('drawerOpenRep').textContent = 'Open ' + exec + "'s full view →";
+    document.body.classList.add('drawer-open'); document.getElementById('drawer').setAttribute('aria-hidden', 'false');
+  }
+  function closeDrawer() { document.body.classList.remove('drawer-open'); document.getElementById('drawer').setAttribute('aria-hidden', 'true'); }
+  document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+  document.getElementById('drawerBack').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+  document.getElementById('drawerOpenRep').addEventListener('click', () => { if (drawerCtx) openRep(drawerCtx.exec, drawerCtx.tab); });
+  window.addEventListener('hashchange', () => { const id = (location.hash || '').slice(1); if (TAB_IDS.includes(id) && id !== activeTab) showTab(id); });
+  let hereTick = false;
+  window.addEventListener('scroll', () => { if (hereTick) return; hereTick = true; requestAnimationFrame(() => { hereTick = false; updateHereBar(); }); }, { passive: true });
+
   renderAll();
   document.querySelectorAll('table.leads, table.hist-table').forEach(refreshTable);
+  Object.keys(GROUPED).forEach((id) => { const t = document.getElementById(id); if (t) groupTable(t); });
+  updateTabBadges();
+  showTab((location.hash || '').slice(1) || 'scoreboard', false);
 })();
 </script>
 </body>

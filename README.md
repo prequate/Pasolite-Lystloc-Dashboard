@@ -53,11 +53,15 @@ Built and maintained by Prequate Advisory for Pasolite Electricals Pvt. Ltd.
 - **Overdue:** the deadline on the lead's latest visit has passed and nobody has visited since. It is measured against the day the dashboard is opened, not the last date in the data.
 - **Joint visits:** a lead leaves a rep's overdue list once any colleague visits it later. It then shows under "Followed Up by a Colleague" in that rep's view. A lead two reps visited together, with no visit since, stays on both reps' lists.
 
-## Section order
+## Layout
 
-Overview, then Section 1 Lead Mix, Section 2 Follow-up Watch, Section 3 New Leads, Section 4 Existing Leads, Section 5 Missed Days.
+The dashboard opens on the most recent week in the data (and its month), on the **Scoreboard** tab.
 
-The dashboard opens on the most recent week in the data (and its month). With All Executives selected, the tables in Sections 2, 3 and 4 show the Sales Executive right after the Lead; the column hides when one rep is picked.
+- **Tabs.** Scoreboard, Overview, Section 1 Lead Mix, Section 2 Follow-up Watch, Section 3 New Leads, Section 4 Existing Leads and Section 5 Missed Days. One shows at a time, and each tab shows its count for the current filters. Adding `#stale` (or another section id) to the address opens that tab directly.
+- **Scoreboard.** One row per sales rep: Forms, New Leads, Existing Leads, Followed Up On Time, Overdue and Missed Days, shaded so the larger numbers stand out. Click any number to slide in the leads behind it. Click a rep's name to open their full view.
+- **Grouped lists.** With All Executives selected, every list in Sections 2 to 5 is grouped by sales rep, collapsed, most first. With All Executives, the tables in Sections 2, 3 and 4 also show the Sales Executive right after the Lead.
+- **"You are here" bar.** A thin bar under the tabs names the section, the table and the rep group in view.
+- **Missed Days** leaves Sundays out.
 
 ## Finding the reps behind a lead mix
 
