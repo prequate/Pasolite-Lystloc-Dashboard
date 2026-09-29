@@ -49,6 +49,7 @@ Built and maintained by Prequate Advisory for Pasolite Electricals Pvt. Ltd.
   - A spelled-out gap such as "in 2 days" is counted exactly.
   - No usable date: the deadline comes from the Requirement Timeline, at most 30 days after the visit. Immediate is 7 days, Within 15 days is 15 days, anything longer is 30 days. Marked "from timeline".
   - No date and no timeline: the end of the week after the visit, marked "assumed".
+  - Ready for a LystLoc drop-down. If Next Follow-up becomes a fixed list, these options are already read, with or without a number in front ("4 - Next week"): Tomorrow (1 day), Within 3 days (3 days), This week (Sunday), Next week (Sunday after), Within 15 days (15 days), This month (month end), Next month (end of next month), Client will call back (15 days).
 - **Followed Up On Time:** the next visit to the lead, by any rep, came on or before the deadline. The credit goes to the rep who made the promise. A second form for the same lead on the same day counts as kept.
 - **Overdue:** the deadline on the lead's latest visit has passed and nobody has visited since. It is measured against the day the dashboard is opened, not the last date in the data.
 - **Joint visits:** a lead leaves a rep's overdue list once any colleague visits it later. It then shows under "Followed Up by a Colleague" in that rep's view. A lead two reps visited together, with no visit since, stays on both reps' lists.
@@ -57,8 +58,8 @@ Built and maintained by Prequate Advisory for Pasolite Electricals Pvt. Ltd.
 
 The dashboard opens on the most recent week in the data (and its month), on the **Scoreboard** tab.
 
-- **Tabs.** Scoreboard, Overview, Section 1 Lead Mix, Section 2 Follow-up Watch, Section 3 New Leads, Section 4 Existing Leads and Section 5 Missed Days. One shows at a time, and each tab shows its count for the current filters. Adding `#stale` (or another section id) to the address opens that tab directly.
-- **Scoreboard.** One row per sales rep: Forms, New Leads, Existing Leads, Followed Up On Time, Overdue and Missed Days, shaded so the larger numbers stand out. Click any number to slide in the leads behind it. Click a rep's name to open their full view.
+- **Tabs.** Scoreboard, Section 1 Lead Mix, Section 2 Follow-up Watch, Section 3 New Leads, Section 4 Existing Leads and Section 5 Missed Days. One shows at a time, and each tab shows its count for the current filters. Adding `#stale` (or another section id) to the address opens that tab directly. The old Overview tab is gone; an old `#overview` link opens the Scoreboard.
+- **Scoreboard.** One row per sales rep, A to Z: Forms, New Leads, Existing Leads, Followed Up On Time, Overdue and Missed Days, shaded so the larger numbers stand out. Picking a name in Sales Executive moves that rep to the top with a "Selected" tag. Clicking a column header still sorts by that column. Click any number to slide in the leads behind it. Click a rep's name to open their full view.
 - **Grouped lists.** With All Executives selected, every list in Sections 2 to 5 is grouped by sales rep, collapsed, most first. With All Executives, the tables in Sections 2, 3 and 4 also show the Sales Executive right after the Lead.
 - **"You are here" bar.** A thin bar under the tabs names the section, the table and the rep group in view.
 - **Missed Days** leaves Sundays out.

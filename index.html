@@ -502,6 +502,7 @@
      sales rep, collapsed, with a count. 3. A thin bar under the header
      always names the section, the table and the rep group in view. */
   section.block.tab-hidden{display:none !important;}
+  section.block#overview{display:none !important;}
   section.block:not(.tab-hidden){margin-top:0;}
   .quicknav a{display:inline-flex; align-items:center; gap:7px;}
   .quicknav a.tab-active{color:#fff; border-bottom-color:var(--accent);}
@@ -547,6 +548,8 @@
   table.sb tr.sb-me td{box-shadow:inset 0 0 0 9999px rgba(225,55,43,0.05);}
   .sb-rep-btn{display:flex; align-items:center; gap:8px; width:100%; font-family:inherit; font-size:13px; font-weight:700; color:var(--ink); background:none; border:none; padding:10px 12px; cursor:pointer; text-align:left;}
   .sb-rep-btn:hover{color:var(--accent-deep);}
+  .sb-pin{font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#fff; background:var(--accent); border-radius:999px; padding:2px 8px;}
+  table.sb tr.sb-me td{border-bottom:2px solid var(--accent);}
   .sb-rep-btn .sb-go{margin-left:auto; font-size:11px; color:var(--ink-muted); font-weight:600;}
   .sb-cell{display:block; width:100%; font-family:inherit; font-size:14px; font-weight:700; color:var(--ink); border:none; padding:10px 8px; cursor:pointer; background:transparent;}
   .sb-cell:hover{outline:2px solid var(--ink); outline-offset:-2px;}
@@ -704,7 +707,6 @@
   <div class="quicknav">
     <div class="quicknav-inner">
       <a href="#scoreboard">Scoreboard</a>
-      <a href="#overview">Overview</a>
       <a href="#breakdown">Lead Mix</a>
       <a href="#stale">Follow-up Watch</a>
       <a href="#newleads">New Leads</a>
@@ -730,7 +732,7 @@
           <h2>Who needs attention</h2>
         </div>
       </div>
-      <span class="block-hint">Click any number to see the leads behind it</span>
+      <span class="block-hint">A to Z. Pick a name in Sales Executive to bring it to the top. Click any number to see the leads behind it.</span>
     </div>
     <div class="sb-wrap"><table class="sb" id="sbTable"></table></div>
     <div class="sb-legend">
@@ -1447,9 +1449,24 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026"], "weeks": [{
     return new Date(y, mi, 1);
   }
 
+  // Proposed LystLoc dropdown for Next Follow-up (29-Sep-2026, pending
+  // LystLoc). Options arrive like the other coded fields, e.g. "4 - Next week".
+  // Only an exact option label is read this way; free text is unchanged.
+  const FU_OPTIONS = {
+    'tomorrow': (v) => addDays(v, 1),
+    'within 3 days': (v) => addDays(v, 3),
+    'this week': (v) => sundayOf(v),
+    'next week': (v) => addDays(sundayOf(v), 7),
+    'within 15 days': (v) => addDays(v, 15),
+    'this month': (v) => endOfMonth(v),
+    'next month': (v) => endOfMonth(addMonths(new Date(v.getFullYear(), v.getMonth(), 1), 1)),
+    'client will call back': (v) => addDays(v, 15),
+  };
   function parseFollowUp(raw, visitDateStr) {
     if (!raw || !raw.trim()) return { date: null, method: 'blank' };
     const visit = new Date(visitDateStr + 'T00:00:00');
+    const opt = raw.trim().replace(/^\d+\s*-\s*/, '').replace(/\s+/g, ' ').replace(/\.$/, '').trim().toLowerCase();
+    if (FU_OPTIONS[opt] && (/^\s*\d+\s*-\s*[A-Za-z]/.test(raw) || opt === raw.trim().toLowerCase().replace(/\.$/, ''))) return { date: FU_OPTIONS[opt](visit), method: 'option' };
     const s = raw.trim();
     const sl = s.toLowerCase().replace(/\.$/, '').trim();
     let m;
@@ -2907,10 +2924,10 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026"], "weeks": [{
 
 
   // ---- Tabs, rep groups, "you are here" bar (28-Sep-2026) ---------------
-  const TAB_IDS = ['scoreboard', 'overview', 'breakdown', 'stale', 'newleads', 'existingleads', 'nocheckin'];
+  const TAB_IDS = ['scoreboard', 'breakdown', 'stale', 'newleads', 'existingleads', 'nocheckin'];
   let activeTab = 'scoreboard';
   function showTab(id, scroll) {
-    if (!TAB_IDS.includes(id)) id = 'overview';
+    if (!TAB_IDS.includes(id)) id = 'scoreboard';
     activeTab = id;
     TAB_IDS.forEach((t) => { const sec = document.getElementById(t); if (sec) sec.classList.toggle('tab-hidden', t !== id); });
     document.querySelectorAll('.quicknav a').forEach((a) => a.classList.toggle('tab-active', a.getAttribute('href') === '#' + id));
@@ -3024,14 +3041,14 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026"], "weeks": [{
 
   // ---- UI 5: Team Scoreboard + UI 4: drawer --------------------------------
   const SB_COLS = [
-    { key: 'forms', label: 'Forms', tone: '46,125,140', tab: 'overview' },
+    { key: 'forms', label: 'Forms', tone: '46,125,140', tab: 'newleads' },
     { key: 'newl', label: 'New Leads', tone: '46,125,140', tab: 'newleads' },
     { key: 'exist', label: 'Existing Leads', tone: '46,125,140', tab: 'existingleads' },
     { key: 'kept', label: 'Followed Up On Time', tone: '47,143,91', tab: 'stale' },
     { key: 'overdue', label: 'Overdue', tone: '178,58,46', tab: 'stale' },
     { key: 'missed', label: 'Missed Days', tone: '178,58,46', tab: 'nocheckin' },
   ];
-  let sbSort = { key: 'overdue', dir: -1 };
+  let sbSort = { key: 'exec', dir: 1 };
   function withExec(exec, fn) {
     const sel = document.getElementById('execSelect'), prev = sel.value;
     sel.value = exec;
@@ -3050,13 +3067,15 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026"], "weeks": [{
     const t = document.getElementById('sbTable'); if (!t) return;
     const rows = DATA.execs.map((e) => Object.assign({ exec: e }, repStats(e)));
     const max = {}; SB_COLS.forEach((c) => { max[c.key] = Math.max(1, ...rows.map((r) => r[c.key])); });
-    rows.sort((a, b) => (a[sbSort.key] - b[sbSort.key]) * sbSort.dir || a.exec.localeCompare(b.exec));
+    rows.sort((a, b) => (sbSort.key === 'exec' ? a.exec.localeCompare(b.exec) * sbSort.dir : (a[sbSort.key] - b[sbSort.key]) * sbSort.dir || a.exec.localeCompare(b.exec)));
     const cur = document.getElementById('execSelect').value;
+    // The rep picked in the Sales Executive drop-down goes to the top.
+    if (cur) { const i = rows.findIndex((r) => r.exec === cur); if (i > 0) rows.unshift(rows.splice(i, 1)[0]); }
     const total = {}; SB_COLS.forEach((c) => { total[c.key] = rows.reduce((n, r) => n + r[c.key], 0); });
     let html = '<thead><tr><th data-sort="exec">Sales Executive' + (sbSort.key === 'exec' ? '<span class="arrow">' + (sbSort.dir === 1 ? '&#9650;' : '&#9660;') + '</span>' : '') + '</th>' +
       SB_COLS.map((c) => '<th data-sort="' + c.key + '">' + c.label + (sbSort.key === c.key ? '<span class="arrow">' + (sbSort.dir === 1 ? '&#9650;' : '&#9660;') + '</span>' : '') + '</th>').join('') + '</tr></thead><tbody>';
     rows.forEach((r) => {
-      html += '<tr class="' + (r.exec === cur ? 'sb-me' : '') + '"><td class="sb-rep"><button type="button" class="sb-rep-btn" data-exec="' + esc(r.exec) + '">' + esc(r.exec) + '<span class="sb-go">Open &rsaquo;</span></button></td>';
+      html += '<tr class="' + (r.exec === cur ? 'sb-me' : '') + '"><td class="sb-rep"><button type="button" class="sb-rep-btn" data-exec="' + esc(r.exec) + '">' + esc(r.exec) + (r.exec === cur ? '<span class="sb-pin">Selected</span>' : '') + '<span class="sb-go">Open &rsaquo;</span></button></td>';
       SB_COLS.forEach((c) => {
         const v = r[c.key], a = v ? (0.08 + 0.42 * v / max[c.key]).toFixed(3) : 0;
         html += '<td style="' + (v ? 'background:rgba(' + c.tone + ',' + a + ')' : '') + '"><button type="button" class="sb-cell' + (v ? '' : ' zero') + '" data-exec="' + esc(r.exec) + '" data-key="' + c.key + '"' + (v ? '' : ' disabled') + '>' + (v ? fmtNum(v) : '&ndash;') + '</button></td>';
