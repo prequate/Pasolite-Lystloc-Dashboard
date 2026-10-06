@@ -12,12 +12,12 @@ Follow-up Watch section (Section 4) with a "Followed Up On Time" table
 table sorted by days overdue - the earlier "Never Followed Up" / "Follow-up
 Lapsed Again" split was merged and then had its Status distinction dropped
 entirely per Harsh's 23-Sep-2026 requests, both tables also carry a Sales
-Executive column and a Not Interested tag pulled from Client Satisfaction -
+Executive column and a Not Interested tag pulled from Lead Stage -
 a clickable timeline/lead-type breakdown (click a value to see the leads
 behind it), and a No Check-ins Logged section (with a Day Type column
 flagging Sundays and national public holidays) for days with a LystLoc entry
 but no Checkin Time logged at all. (Conversion by Executive, the Visit Map,
-the Client Satisfaction breakdown panel, the "Leads Completed" section and
+the Lead Stage breakdown panel, the "Leads Completed" section and
 its browser-local Mark Done mechanism have all been removed per Harsh's
 requests across several 22/23-Sep-2026 follow-ups; the single Leads Visited
 table is now split into New Leads / Existing Leads; the click-to-expand
@@ -465,6 +465,7 @@ def build_records(cleaned_rows, seen_normalized_names):
             "value": row.get("Estimated Project Value") or "",
             "timeline": row.get("Project Requirement Timeline") or "",
             "satisfaction": row.get("Client Satisfaction (1-3)") or "",
+            "stage": row.get("Lead Stage") or "",
             "followUp": row.get("Next Follow-up Date") or "",
             "leadType": row.get("Type of Lead") or "",
             "remarks": row.get("Remarks") or "",
@@ -763,6 +764,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .detail-panel-scroll{max-height:320px; overflow-y:auto;}
   .detail-panel-table{width:100%; min-width:0; font-size:12px;}
   .detail-panel-table th, .detail-panel-table td{padding:8px 14px;}
+  /* Remarks column added 5-Oct-2026: tighter columns so the table fits a laptop screen without sideways scrolling. */
+  @media (min-width: 641px){
+    table.leads.detail-panel-table{min-width:0;}
+    table.leads.detail-panel-table th{white-space:normal; padding:8px 10px; vertical-align:bottom;}
+    table.leads.detail-panel-table td{padding:8px 10px;}
+    table.leads.detail-panel-table td.lead-cell{max-width:180px; white-space:normal;}
+    table.leads.detail-panel-table td.time-cell{white-space:normal; min-width:78px;}
+    table.leads.detail-panel-table td.loc-cell{min-width:150px; max-width:190px; font-size:11.5px;}
+    table.leads.detail-panel-table td.remarks-cell{min-width:190px; max-width:280px;}
+  }
   /* Combined-filter chips (added 23-Sep-2026) - one chip per active value
      across Timeline / Lead Type / Value, each individually removable. See
      activeFilters / leadMatchesAll / leadMatchesOthers in the script. */
@@ -850,6 +861,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .tag.unnamed{background:var(--critical-bg); color:var(--critical);}
   .tag.assumed{background:var(--watch-bg); color:var(--ink-secondary);}
   .tag.fromtl{background:var(--teal-bg); color:var(--teal);}
+  .tag.conflict{background:#FFF1E6; color:#B4541E; border:1px solid #F5C9A6;}
+  /* Type of Lead group captions (5-Oct-2026): plain headings, not
+     clickable, so only the lead types themselves filter. */
+  .seg-caption{display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:11px; font-weight:700; color:var(--ink); text-transform:uppercase; letter-spacing:0.05em; padding:8px 0 5px; margin-top:4px; border-bottom:1px solid var(--border-soft); cursor:default; user-select:none;}
+  .seg-caption .seg-total{font-size:11px; font-weight:700; color:var(--ink-muted); letter-spacing:0; text-transform:none;}
+  .seg-caption.old-form{color:var(--ink-muted); margin-top:10px;}
+  .seg-group .bar-row:first-of-type{margin-top:4px;}
+  .seg-cols{display:block;}
   .tag.notinterested{background:var(--surface-3); color:var(--ink-secondary); border:1px solid var(--border);}
   /* Visit history drop-down (Section 4, 24-Sep-2026) */
   .hist-btn{display:inline-flex; align-items:center; gap:5px; margin-top:6px; padding:3px 10px; font-size:11px; font-weight:700; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--ink-secondary); cursor:pointer; white-space:nowrap; font-family:inherit;}
@@ -924,6 +943,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .pie-label-val{font-size:11px; font-weight:700; font-family:'Product Sans','Open Sans',sans-serif;}
   .pie-label.dim .pie-label-cat, .pie-label.dim .pie-label-val{opacity:0.35;}
 
+
+  /* Lead Mix layout B (5-Oct-2026): three columns. Timeline and Lead Stage
+     stacked on the left, Type of Lead in the middle, Value pie on the right. */
+  .lead-mix-row{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,0.9fr); gap:0 32px; align-items:start;}
+  .lead-mix-row .breakdown-grid{display:contents;}
+  .mix-col{display:flex; flex-direction:column; gap:22px; min-width:0;}
+  @media (max-width: 980px){
+    .lead-mix-row{grid-template-columns:minmax(0,1fr); gap:22px 0;}
+    .lead-mix-row .mix-pie-row{margin-top:0;}
+  }
   footer{margin-top:26px; border-top:1px solid var(--border); padding-top:16px; font-size:11.5px; color:var(--ink-muted); line-height:1.6;}
   footer strong{color:var(--ink-secondary);}
 
@@ -1346,7 +1375,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <h2>Lead Mix &mdash; when &amp; who</h2>
         </div>
       </div>
-      <span class="block-hint">Click any row or slice to filter &mdash; combine across all three</span>
+      <span class="block-hint">Click a lead type, row or slice to filter. Picks combine across panels.</span>
     </div>
     <div class="lead-mix-row">
       <div class="breakdown-grid" id="breakdownGrid"></div>
@@ -1386,7 +1415,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         <thead><tr>
           <th>Lead</th><th class="exec-cell">Sales Executive</th><th>Time</th><th>Est. Project Value</th><th>Type of Lead</th>
           <th>Location</th><th>Requirement Timeline</th><th>Next Follow-up</th>
-          <th>Client Satisfaction</th><th>Remarks</th>
+          <th>Lead Stage</th><th>Remarks</th>
         </tr></thead>
         <tbody id="keptBody"></tbody>
       </table>
@@ -1410,7 +1439,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <th>Lead</th><th class="exec-cell">Sales Executive</th><th>Time</th><th>Est. Project Value</th><th>Type of Lead</th>
           <th>Location</th><th>Requirement Timeline</th><th>Next Follow-up</th>
           <th>Due Week</th><th>Days Overdue</th>
-          <th>Client Satisfaction</th><th>Remarks</th>
+          <th>Lead Stage</th><th>Remarks</th>
         </tr></thead>
         <tbody id="staleOverdueBody"></tbody>
       </table>
@@ -1431,7 +1460,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             <th>Lead</th><th>Time</th><th>Est. Project Value</th><th>Type of Lead</th>
             <th>Location</th><th>Requirement Timeline</th><th>Next Follow-up</th>
             <th>Due By</th><th>Followed Up By</th><th>Their Visit</th><th>Timing</th>
-            <th>Client Satisfaction</th><th>Remarks</th>
+            <th>Lead Stage</th><th>Remarks</th>
           </tr></thead>
           <tbody id="colleagueBody"></tbody>
         </table>
@@ -1533,10 +1562,46 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
 (function () {
   const DATA = DASHBOARD_DATA;
 
+  // ---- New LystLoc form (live 29/30 Sep 2026) ------------------------
+  // Lead Stage replaced Client Satisfaction. r.satisfaction now carries the
+  // value shown in the "Lead Stage" column: the stage on new-form entries,
+  // the old satisfaction label on older ones. r.stageView feeds the Lead
+  // Stage panel, with old-form values marked "(old form)".
+  const LEAD_SEGMENTS = {
+    'Architect': 'Specifier', 'Interior designer': 'Specifier', 'Lighting or MEP consultant': 'Specifier', 'Lighting consultant': 'Specifier',
+    'Builder or developer': 'Project', 'Procurement or purchase manager': 'Project', 'Contractor (electrical or turnkey)': 'Project',
+    'Business or institution (hotel, hospital, school, office, shop)': 'Project', 'Project': 'Project', 'Builders or Procurement Manager': 'Project',
+    'Residential - Homeowner': 'Residential',
+    'Dealer or electrical shop': 'Channel', 'Distributor': 'Channel', 'Dealer': 'Channel',
+  };
+  DATA.records.forEach((r) => {
+    r.stage = r.stage || '';
+    r.satisfactionOld = r.satisfaction || '';
+    if (r.stage) r.satisfaction = r.stage;
+    r.stageView = r.stage ? r.stage : (r.satisfactionOld ? r.satisfactionOld + ' (old form)' : '');
+    r.segment = r.leadType ? (LEAD_SEGMENTS[(r.leadType || '').trim()] || 'Other') : '';
+  });
+  function isNotInterested(v) { return (v || '').trim().toLowerCase() === 'not interested'; }
+  function letters(v) { return (v || '').toLowerCase().replace(/[^a-z]/g, ''); }
+  // Overdue rule for new-form entries (5-Oct-2026, per Harsh):
+  // closed = Order confirmed; Not interested with no follow-up set;
+  // "No follow-up required" with "Met, no live requirement".
+  // conflict = the follow-up and the stage contradict each other; the lead
+  // stays on watch, tagged, so a live quote never silently disappears.
+  function leadClosure(r) {
+    const st = letters(r.stage), fu = letters(r.followUp);
+    const noFu = fu === 'nofollowuprequired';
+    if (!st && !noFu) return '';
+    if (st === 'orderconfirmed') return 'closed';
+    if (st === 'notinterested') return (noFu || !fu) ? 'closed' : 'conflict';
+    if (noFu) return st === 'metnoliverequirement' ? 'closed' : 'conflict';
+    return '';
+  }
+
   // Shared column set for the New Leads / Existing Leads tables (Sections 2
   // and 3). No Status column here - each table already holds only its own
   // kind of lead, so a New/Existing tag on every row would be redundant.
-  // Client Satisfaction added 23-Sep-2026 per Harsh's request, same field
+  // Lead Stage added 23-Sep-2026 per Harsh's request, same field
   // already audited and shown in Section 4 - Not Interested rendered as a
   // tag (see renderLeadsTableBody below), the other two values shown plain.
   //
@@ -1554,7 +1619,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     { key: 'location', label: 'Location', cls: 'loc-cell' },
     { key: 'timeline', label: 'Requirement Timeline' },
     { key: 'followUp', label: 'Next Follow-up' },
-    { key: 'satisfaction', label: 'Client Satisfaction' },
+    { key: 'satisfaction', label: 'Lead Stage' },
     { key: 'remarks', label: 'Remarks', cls: 'remarks-cell' },
   ];
 
@@ -1651,6 +1716,12 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     'this month': (v) => endOfMonth(v),
     'next month': (v) => endOfMonth(addMonths(new Date(v.getFullYear(), v.getMonth(), 1), 1)),
     'client will call back': (v) => addDays(v, 15),
+    // Approved LystLoc drop-down, live 29/30 Sep 2026 (owner sign-off):
+    '0 to 3 days': (v) => addDays(v, 3),
+    '4 to 7 days': (v) => addDays(v, 7),
+    '8 to 15 days': (v) => addDays(v, 15),
+    '16 to 30 days': (v) => addDays(v, 30),
+    'more than 30 days': (v) => addDays(v, 45), // added by LystLoc, not in the approved list; 45 days per Harsh
   };
   function parseFollowUp(raw, visitDateStr) {
     if (!raw || !raw.trim()) return { date: null, method: 'blank' };
@@ -1810,7 +1881,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
       // anyone - not a submitted form. Excluded here (and everywhere this
       // function feeds), and shown instead in "No Check-ins Logged" below.
       if (!r.hasCheckinTime) return false;
-      if (f.month && r.month !== f.month) return false;
+      if (f.month && !f.week && r.month !== f.month) return false; // a selected week wins over the month (weeks can span two months)
       if (f.week && r.weekStart !== f.week) return false;
       if (f.exec && r.exec !== f.exec) return false;
       return true;
@@ -1824,7 +1895,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
       // Sundays are not working days: left out of Missed Days entirely
       // (28-Sep-2026, per Harsh), so they no longer pad the list.
       if (r.dayType && r.dayType.indexOf('Sunday') !== -1) return false;
-      if (f.month && r.month !== f.month) return false;
+      if (f.month && !f.week && r.month !== f.month) return false; // a selected week wins over the month (weeks can span two months)
       if (f.week && r.weekStart !== f.week) return false;
       if (f.exec && r.exec !== f.exec) return false;
       return true;
@@ -1958,7 +2029,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
         if (col.cls) td.className = col.cls;
         if (col.key === 'lead' && r.unnamedLead) {
           td.innerHTML = (r.lead || '(unnamed)') + ' <span class="tag unnamed">no name logged</span>';
-        } else if (col.key === 'satisfaction' && r.satisfaction === 'Not Interested') {
+        } else if (col.key === 'satisfaction' && isNotInterested(r.satisfaction)) {
           td.innerHTML = '<span class="tag notinterested">' + esc(r.satisfaction) + '</span>';
         } else {
           td.textContent = rowValue(r, col.key);
@@ -2066,6 +2137,8 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     const stale = [];
     latestByLead.forEach((r) => {
       if (r.date !== lastDayByLead.get(leadKey(r.lead))) return; // someone has visited since
+      const closure = leadClosure(r);
+      if (closure === 'closed') return; // order confirmed / not interested / no follow-up needed
       const parsed = parseFollowUp(r.followUp, r.date);
       let assumed = false, basis = 'date', dueDate;
       if (parsed.date) {
@@ -2093,7 +2166,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
       // Existing Leads, draws on): has the rep ever been back to this lead
       // more than once, ever - regardless of the current filter?
       const everRevisited = (visitCounts.get(key) || 0) > 1;
-      stale.push({ r, days, assumed, basis, weekLabel: weekLabelJS(bucketMonday), key, everRevisited, due: threshold });
+      stale.push({ r, days, assumed, basis, weekLabel: weekLabelJS(bucketMonday), key, everRevisited, due: threshold, conflict: closure === 'conflict' });
     });
     stale.sort((a, b) => b.days - a.days);
     return { stale, totalNamed: latestByLead.size };
@@ -2118,8 +2191,9 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     }
     rows.forEach((s) => {
       const { r, days, assumed, weekLabel } = s;
+      const conflictTag = s.conflict ? ' <span class="tag conflict" title="The Next Follow-up and the Lead Stage contradict each other. Kept on watch until the rep corrects it.">conflicting entry</span>' : '';
       const tr = document.createElement('tr');
-      const notInterested = r.satisfaction === 'Not Interested';
+      const notInterested = isNotInterested(r.satisfaction);
       const satCell = notInterested
         ? '<span class="tag notinterested">' + esc(r.satisfaction) + '</span>'
         : esc(r.satisfaction || '');
@@ -2129,7 +2203,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
       // dropped as a duplicate (23-Sep-2026, per Harsh). Next Follow-up is
       // the rep's own raw text - the thing Due Week is calculated from.
       tr.innerHTML =
-        '<td class="lead-cell">' + esc(r.lead) + histButton(r.lead) + '</td>' +
+        '<td class="lead-cell">' + esc(r.lead) + conflictTag + histButton(r.lead) + '</td>' +
         '<td class="exec-cell">' + esc(r.exec) + '</td>' +
         '<td class="time-cell">' + esc(r.time || '') + '</td>' +
         '<td>' + esc(r.value || '') + '</td>' +
@@ -2206,7 +2280,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
   // On Time, and the last visit shows "Overdue" exactly when the lead is in
   // Overdue Follow-ups.
   const HISTORY_COLS = ['#', 'Time', 'Est. Project Value', 'Type of Lead', 'Location', 'Requirement Timeline',
-    'Next Follow-up', 'Due By', 'Outcome', 'Sales Executive', 'Client Satisfaction', 'Remarks'];
+    'Next Follow-up', 'Due By', 'Outcome', 'Sales Executive', 'Lead Stage', 'Remarks'];
 
   function leadHistory(name) {
     const key = leadKey(name);
@@ -2250,7 +2324,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
       } else {
         outcome = '<span class="tag pending">Not yet due</span>';
       }
-      const sat = v.satisfaction === 'Not Interested'
+      const sat = isNotInterested(v.satisfaction)
         ? '<span class="tag notinterested">' + esc(v.satisfaction) + '</span>' : esc(v.satisfaction || '');
       rows += '<tr' + (hlSet.has(v) ? ' class="' + hlClass + '"' : '') + '>' +
         '<td class="visit-no">' + (i + 1) + '</td>' +
@@ -2312,7 +2386,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     } else {
       kept.forEach((k) => {
         const tr = document.createElement('tr');
-        const notInterested = k.next.satisfaction === 'Not Interested';
+        const notInterested = isNotInterested(k.next.satisfaction);
         const satCell = notInterested
           ? '<span class="tag notinterested">' + esc(k.next.satisfaction) + '</span>'
           : esc(k.next.satisfaction || '');
@@ -2397,7 +2471,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     doc.autoTable({
       startY: 92, margin: { left: M, right: M, bottom: 30 },
       head: [['#', 'Lead', 'Last Visit', 'Est. Project Value', 'Type of Lead', 'Location', 'Requirement Timeline',
-              'Next Follow-up (as written)', 'Due By', 'Days Overdue', 'Client Satisfaction', 'Remarks']],
+              'Next Follow-up (as written)', 'Due By', 'Days Overdue', 'Lead Stage', 'Remarks']],
       body,
       styles: { font: 'helvetica', fontSize: 7.5, cellPadding: 4, textColor: [30, 30, 30], valign: 'top', overflow: 'linebreak', lineColor: [225, 225, 225], lineWidth: 0.5 },
       headStyles: { fillColor: [22, 22, 22], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
@@ -2472,7 +2546,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     }
     rows.forEach((c) => {
       const r = c.r, tr = document.createElement('tr');
-      const sat = r.satisfaction === 'Not Interested'
+      const sat = isNotInterested(r.satisfaction)
         ? '<span class="tag notinterested">' + esc(r.satisfaction) + '</span>' : esc(r.satisfaction || '');
       tr.innerHTML =
         '<td class="lead-cell">' + esc(r.lead) + histButton(r.lead) + '</td>' +
@@ -2531,7 +2605,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
   }
 
   // ---- timeline / lead type breakdown --------------------------------
-  // Client Satisfaction panel removed 22-Sep-2026 per Harsh's request. The
+  // Lead Stage panel removed 22-Sep-2026 per Harsh's request. The
   // underlying "satisfaction" field is still parsed and present on every
   // record (Task D still captures it) - only the display here was dropped.
   //
@@ -2544,8 +2618,8 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
   // panel below always shows the exact leads matching the full combination.
   // Respects the current Month / Week / Executive selection throughout.
   const TIMELINE_ORDER = ['Immediate Requirement', 'Within 15 Days', '15 Days to 1 Months', '1 to 2 Months', 'Above 2 Months'];
-  const VALUE_ORDER = ['Below ₹50,000', '₹50,000 to ₹2 Lakhs', '₹2 Lakhs to ₹5 Lakhs', '₹5 Lakhs to ₹10 Lakhs', '₹10 Lakhs to ₹15 Lakhs', 'Above 15 Lakhs'];
-  const BREAKDOWN_FIELD_LABELS = { timeline: 'Project Requirement Timeline', leadType: 'Type of Lead', value: 'Estimated Project Value' };
+  const VALUE_ORDER = ['Not known yet', 'Below ₹50,000', '₹50,000 to ₹2 Lakhs', '₹2 Lakhs to ₹5 Lakhs', '₹5 Lakhs to ₹10 Lakhs', '₹10 Lakhs to ₹15 Lakhs', 'Above 15 Lakhs'];
+  const BREAKDOWN_FIELD_LABELS = { timeline: 'Project Requirement Timeline', leadType: 'Type of Lead', value: 'Estimated Project Value', segment: 'Lead Group', stageView: 'Lead Stage' };
   // Icon + tone per category value, added 23-Sep-2026 for the graphical
   // redesign. Anything not listed here (a lead-type/timeline value the data
   // hasn't shown yet) falls back to a neutral icon rather than breaking.
@@ -2563,6 +2637,37 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     'Dealer': { icon: 'icon-store', tone: 'tone-good' },
     'Lighting consultant': { icon: 'icon-bulb', tone: 'tone-watch' },
     'Distributor': { icon: 'icon-truck', tone: 'tone-neutral' },
+    'Interior designer': { icon: 'icon-arch', tone: 'tone-accent' },
+    'Lighting or MEP consultant': { icon: 'icon-bulb', tone: 'tone-watch' },
+    'Builder or developer': { icon: 'icon-hardhat', tone: 'tone-amber' },
+    'Procurement or purchase manager': { icon: 'icon-briefcase', tone: 'tone-amber' },
+    'Contractor (electrical or turnkey)': { icon: 'icon-hardhat', tone: 'tone-teal' },
+    'Business or institution (hotel, hospital, school, office, shop)': { icon: 'icon-briefcase', tone: 'tone-teal' },
+    'Residential - Homeowner': { icon: 'icon-arch', tone: 'tone-good' },
+    'Dealer or electrical shop': { icon: 'icon-store', tone: 'tone-good' },
+  };
+  const SEGMENT_ORDER = ['Specifier', 'Project', 'Residential', 'Channel', 'Other'];
+  const SEGMENT_ICONS = {
+    'Specifier': { icon: 'icon-arch', tone: 'tone-accent' },
+    'Project': { icon: 'icon-briefcase', tone: 'tone-teal' },
+    'Residential': { icon: 'icon-arch', tone: 'tone-good' },
+    'Channel': { icon: 'icon-store', tone: 'tone-amber' },
+    'Other': { icon: 'icon-bar-chart', tone: 'tone-neutral' },
+  };
+  const STAGE_ORDER = ['Not interested', 'Met, no live requirement', 'Requirement shared (drawings, BOQ or list)',
+    'Samples or quote asked', 'Quote sent, negotiating', 'Order confirmed',
+    'Very Positive / Strong Opportunity ✅ (old form)', 'Interested (old form)', 'Not Interested (old form)'];
+  const STAGE_ICONS = {
+    'Not interested': { icon: 'icon-bar-chart', tone: 'tone-neutral' },
+    'Met, no live requirement': { icon: 'icon-bar-chart', tone: 'tone-watch' },
+    'Requirement shared (drawings, BOQ or list)': { icon: 'icon-bar-chart', tone: 'tone-teal' },
+    'Samples or quote asked': { icon: 'icon-bar-chart', tone: 'tone-amber' },
+    'Quote sent, negotiating': { icon: 'icon-bar-chart', tone: 'tone-accent' },
+    'Order confirmed': { icon: 'icon-bar-chart', tone: 'tone-good' },
+  };
+  const STAGE_SHORT_LABELS = {
+    'Requirement shared (drawings, BOQ or list)': 'Requirement shared',
+    'Very Positive / Strong Opportunity ✅ (old form)': 'Very positive (old form)',
   };
   const FALLBACK_ICON = { icon: 'icon-bar-chart', tone: 'tone-watch' };
   // Display-only shorthands so the fixed-width bar label doesn't truncate
@@ -2577,12 +2682,19 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
   };
   const LEADTYPE_SHORT_LABELS = {
     'Builders or Procurement Manager': 'Builder / procurement',
+    'Business or institution (hotel, hospital, school, office, shop)': 'Business / institution',
+    'Contractor (electrical or turnkey)': 'Contractor',
+    'Procurement or purchase manager': 'Procurement',
+    'Residential - Homeowner': 'Homeowner',
+    'Dealer or electrical shop': 'Dealer / electrical shop',
+    'Lighting or MEP consultant': 'Lighting / MEP consultant',
   };
   // Sequential colour ramp for the value pie, low to high. The top tier was
   // deliberately made green rather than the dashboard's usual red/accent -
   // Harsh's call (23-Sep-2026): red is used elsewhere here for overdue/
   // alert states, and the highest-value tier is the opposite of a problem.
   const VALUE_COLORS = {
+    'Not known yet': '#C9C9C9',
     'Below ₹50,000': '#8A8A8A',
     '₹50,000 to ₹2 Lakhs': '#2E7D8C',
     '₹2 Lakhs to ₹5 Lakhs': '#B4791E',
@@ -2591,6 +2703,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     'Above 15 Lakhs': '#1B7A46',
   };
   const VALUE_SHORT_LABELS = {
+    'Not known yet': 'Not known',
     'Below ₹50,000': 'Below ₹50k',
     '₹50,000 to ₹2 Lakhs': '₹50k – 2L',
     '₹2 Lakhs to ₹5 Lakhs': '₹2 – 5L',
@@ -2608,16 +2721,17 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
   // the other two panels and the pie, and you can still see - and add to -
   // every option inside the panel you're looking at. The shared detail
   // table below always reflects the full intersection (leadMatchesAll).
-  const FILTER_FIELDS = ['timeline', 'leadType', 'value'];
-  let activeFilters = { timeline: new Set(), leadType: new Set(), value: new Set() };
+  const FILTER_FIELDS = ['timeline', 'leadType', 'value', 'segment', 'stageView'];
+  let activeFilters = { timeline: new Set(), leadType: new Set(), value: new Set(), segment: new Set(), stageView: new Set() };
 
   function activeFilterCount() {
     return FILTER_FIELDS.reduce((n, f) => n + activeFilters[f].size, 0);
   }
 
   function leadMatchesOthers(lead, excludeField) {
+    const ex = Array.isArray(excludeField) ? excludeField : [excludeField];
     return FILTER_FIELDS.every((f) => {
-      if (f === excludeField) return true;
+      if (ex.includes(f)) return true;
       const set = activeFilters[f];
       if (!set.size) return true;
       return set.has((lead[f] || '').trim());
@@ -2648,16 +2762,23 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
   }
 
   function renderBreakdownPanel(field, title, rows, total, iconMap, shortLabels) {
-    let html = '<div class="breakdown-panel"><h3>' + title + '</h3>';
+    let html = '<div class="breakdown-panel panel-' + field + '"><h3>' + title + '</h3>';
     if (rows.length === 0) {
       html += '<p style="font-size:12.5px;color:var(--ink-secondary);margin:0;">No data in this selection.</p>';
     } else {
       const max = Math.max(...rows.map((r) => r.count));
+      let oldCaption = false;
       rows.forEach((r) => {
+        if (field === 'stageView' && / \(old form\)$/.test(r.label) && !oldCaption) {
+          oldCaption = true;
+          const oldTotal = rows.filter((x) => / \(old form\)$/.test(x.label)).reduce((n, x) => n + x.count, 0);
+          html += '<div class="seg-caption old-form"><span>Old form, before 29 Sep</span><span class="seg-total">' + fmtNum(oldTotal) + ' · ' + pct(oldTotal, total) + '%</span></div>';
+        }
         const w = max ? Math.round((r.count / max) * 100) : 0;
         const active = activeFilters[field].has(r.label);
         const meta = iconMap[r.label] || FALLBACK_ICON;
-        const displayLabel = (shortLabels && shortLabels[r.label]) || r.label;
+        let displayLabel = (shortLabels && shortLabels[r.label]) || r.label;
+        if (oldCaption) displayLabel = displayLabel.replace(/ \(old form\)$/, '');
         html += '<div class="bar-row' + (active ? ' bar-row-active' : '') + '" data-field="' + esc(field) + '" data-value="' + esc(r.label) + '" tabindex="0" role="button" aria-expanded="' + (active ? 'true' : 'false') + '" title="' + esc(r.label) + '">' +
           '<span class="bar-icon icon-badge ' + meta.tone + '"><svg class="icon"><use href="#' + meta.icon + '"></use></svg></span>' +
           '<span class="bar-label">' + esc(displayLabel) + '</span>' +
@@ -2668,6 +2789,45 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     }
     html += '</div>';
     return html;
+  }
+
+  // Type of Lead grouped by buyer segment (5-Oct-2026, per Harsh): a bold
+  // group row (filters the whole group) with its lead types under it.
+  function renderGroupedTypePanel(leads) {
+    const total = leads.length;
+    const bySeg = {};
+    leads.forEach((r) => {
+      const t = (r.leadType || '').trim(); if (!t) return;
+      const g = r.segment || 'Other';
+      (bySeg[g] = bySeg[g] || { count: 0, types: {} }).count += 1;
+      bySeg[g].types[t] = (bySeg[g].types[t] || 0) + 1;
+    });
+    let html = '<div class="breakdown-panel panel-leadType"><h3>Type of Lead</h3>';
+    const segs = SEGMENT_ORDER.filter((g) => bySeg[g]);
+    if (!segs.length) {
+      html += '<p style="font-size:12.5px;color:var(--ink-secondary);margin:0;">No data in this selection.</p>';
+    } else {
+      const max = Math.max(...segs.map((g) => Math.max(...Object.values(bySeg[g].types))));
+      const row = (field, value, label, count, meta, cls) => {
+        const w = max ? Math.round((count / max) * 100) : 0;
+        const active = activeFilters[field].has(value);
+        return '<div class="bar-row ' + cls + (active ? ' bar-row-active' : '') + '" data-field="' + esc(field) + '" data-value="' + esc(value) + '" tabindex="0" role="button" aria-expanded="' + (active ? 'true' : 'false') + '" title="' + esc(value) + '">' +
+          '<span class="bar-icon icon-badge ' + meta.tone + '"><svg class="icon"><use href="#' + meta.icon + '"></use></svg></span>' +
+          '<span class="bar-label">' + esc(label) + '</span>' +
+          '<span class="bar-track"><span class="bar-fill" style="width:' + w + '%;"></span></span>' +
+          '<span class="bar-count">' + fmtNum(count) + ' · ' + pct(count, total) + '%</span></div>';
+      };
+      html += '<div class="seg-cols">';
+      segs.forEach((g) => {
+        html += '<div class="seg-group"><div class="seg-caption"><span>' + esc(g) + '</span><span class="seg-total">' + fmtNum(bySeg[g].count) + ' · ' + pct(bySeg[g].count, total) + '%</span></div>';
+        Object.keys(bySeg[g].types).sort((a, b) => bySeg[g].types[b] - bySeg[g].types[a]).forEach((t) => {
+          html += row('leadType', t, LEADTYPE_SHORT_LABELS[t] || t, bySeg[g].types[t], LEADTYPE_ICONS[t] || FALLBACK_ICON, 'seg-child');
+        });
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    return html + '</div>';
   }
 
   // ---- Estimated Project Value pie (Section 1, "What it's worth") -------
@@ -2806,7 +2966,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     if (rows.length === 0) {
       html += '<p class="empty-state" style="padding:24px;">No leads match this combination.</p>';
     } else {
-      html += '<div class="detail-panel-scroll"><table class="leads detail-panel-table"><thead><tr><th>Lead</th><th>Time</th><th>Est. Project Value</th><th>Type of Lead</th><th>Location</th><th>Requirement Timeline</th><th>Next Follow-up</th></tr></thead><tbody>';
+      html += '<div class="detail-panel-scroll"><table class="leads detail-panel-table"><thead><tr><th>Lead</th><th>Time</th><th>Est. Project Value</th><th>Type of Lead</th><th>Location</th><th>Requirement Timeline</th><th>Next Follow-up</th><th>Remarks</th></tr></thead><tbody>';
       rows.forEach((r) => {
         html += '<tr><td class="lead-cell">' + esc(r.lead || '(no lead logged)') + '</td>' +
           '<td class="time-cell">' + esc(r.time || '') + '</td>' +
@@ -2814,7 +2974,8 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
           '<td>' + esc(r.leadType || '') + '</td>' +
           '<td class="loc-cell">' + esc(r.location || '') + '</td>' +
           '<td>' + esc(r.timeline || '') + '</td>' +
-          '<td>' + esc(r.followUp || '') + '</td></tr>';
+          '<td>' + esc(r.followUp || '') + '</td>' +
+          '<td class="remarks-cell">' + esc(r.remarks || '') + '</td></tr>';
       });
       html += '</tbody></table></div>';
     }
@@ -2850,12 +3011,14 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     // one panel reshapes the other two - and the pie - rather than leaving
     // them static. See leadMatchesOthers above.
     const timelineLeads = leads.filter((r) => leadMatchesOthers(r, 'timeline'));
-    const leadTypeLeads = leads.filter((r) => leadMatchesOthers(r, 'leadType'));
+    const leadTypeLeads = leads.filter((r) => leadMatchesOthers(r, ['leadType', 'segment']));
+    const stageLeads = leads.filter((r) => leadMatchesOthers(r, 'stageView'));
     const valueLeads = leads.filter((r) => leadMatchesOthers(r, 'value'));
     const grid = document.getElementById('breakdownGrid');
     grid.innerHTML =
-      renderBreakdownPanel('timeline', 'Project Requirement Timeline', orderedCounts(timelineLeads, 'timeline', TIMELINE_ORDER), timelineLeads.length, TIMELINE_ICONS, TIMELINE_SHORT_LABELS) +
-      renderBreakdownPanel('leadType', 'Type of Lead', orderedCounts(leadTypeLeads, 'leadType', ['Architect']), leadTypeLeads.length, LEADTYPE_ICONS, LEADTYPE_SHORT_LABELS);
+      '<div class="mix-col">' + renderBreakdownPanel('timeline', 'Project Requirement Timeline', orderedCounts(timelineLeads, 'timeline', TIMELINE_ORDER), timelineLeads.length, TIMELINE_ICONS, TIMELINE_SHORT_LABELS) +
+      renderBreakdownPanel('stageView', 'Lead Stage', orderedCounts(stageLeads, 'stageView', STAGE_ORDER), stageLeads.length, STAGE_ICONS, STAGE_SHORT_LABELS) + '</div>' +
+      '<div class="mix-col">' + renderGroupedTypePanel(leadTypeLeads) + '</div>';
 
     grid.querySelectorAll('.bar-row').forEach((el) => {
       const toggle = () => toggleFilter(el.dataset.field, el.dataset.value);
@@ -3322,7 +3485,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
         if (key === 'newl') recs = recs.filter((r) => r.hasLead && r.isNew);
         if (key === 'exist') recs = recs.filter((r) => r.hasLead && r.isExisting);
         n = recs.length;
-        html = drawerTable(std.concat(['Client Satisfaction', 'Remarks']), recs.map((r) => '<tr>' + D_COLS.lead(r) + D_COLS.time(r) + D_COLS.value(r) + D_COLS.type(r) + D_COLS.loc(r) + D_COLS.tl(r) + D_COLS.fu(r) + D_COLS.sat(r) + D_COLS.rem(r) + '</tr>'));
+        html = drawerTable(std.concat(['Lead Stage', 'Remarks']), recs.map((r) => '<tr>' + D_COLS.lead(r) + D_COLS.time(r) + D_COLS.value(r) + D_COLS.type(r) + D_COLS.loc(r) + D_COLS.tl(r) + D_COLS.fu(r) + D_COLS.sat(r) + D_COLS.rem(r) + '</tr>'));
       }
     });
     const f = currentFilters();
