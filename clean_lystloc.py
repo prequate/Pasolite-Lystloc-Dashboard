@@ -31,6 +31,50 @@ NOTES_PATTERN = re.compile(
 )
 
 
+# New LystLoc form (live from 29/30 Sep 2026): Client Satisfaction became
+# "Lead Stage", and every field became a numbered drop-down. Option text can
+# arrive with its commas dropped ("Met  no live requirement", "Below
+# ₹50000"), so values are mapped back to one canonical spelling.
+NOTES_PATTERN_NEW = re.compile(
+    r"Lead\s*:\s*(?P<lead>.*?)\s*,\s*"
+    r"Estimated Project value\s*:\s*(?P<value>.*?)\s*,\s*"
+    r"Project Requirement Timeline\s*:\s*(?P<timeline>.*?)\s*,\s*"
+    r"Lead Stage\s*:\s*(?P<stage>.*?)\s*,\s*"
+    r"Next Follow-up Date\s*:\s*(?P<followup>.*?)\s*,\s*"
+    r"Type of Lead\s*:\s*(?P<leadtype>.*?)\s*,\s*"
+    r"Remarks\s*:\s*(?P<remarks>.*)$",
+    re.DOTALL | re.IGNORECASE,
+)
+
+CANONICAL = {
+    "value": ["Not known yet", "Below ₹50,000", "₹50,000 to ₹2 Lakhs", "₹2 Lakhs to ₹5 Lakhs",
+              "₹5 Lakhs to ₹10 Lakhs", "₹10 Lakhs to ₹15 Lakhs", "Above 15 Lakhs"],
+    "stage": ["Not interested", "Met, no live requirement", "Requirement shared (drawings, BOQ or list)",
+              "Samples or quote asked", "Quote sent, negotiating", "Order confirmed"],
+    "followup": ["0 to 3 days", "4 to 7 days", "8 to 15 days", "16 to 30 days", "More than 30 days",
+                 "Client will call back", "No follow-up required"],
+    "leadtype": ["Architect", "Interior designer", "Lighting or MEP consultant", "Builder or developer",
+                 "Procurement or purchase manager", "Contractor (electrical or turnkey)",
+                 "Business or institution (hotel, hospital, school, office, shop)", "Residential - Homeowner",
+                 "Dealer or electrical shop", "Distributor"],
+}
+
+
+def _key(v):
+    return re.sub(r"[^a-z0-9]", "", v.lower())
+
+
+def canonical(field, v):
+    """Strip the option number and map to the canonical option text. Text
+    that matches no known option is kept as written (and flagged later)."""
+    v = strip_code_prefix(v)
+    k = _key(v)
+    for opt in CANONICAL[field]:
+        if _key(opt) == k:
+            return opt
+    return v
+
+
 def clean(v):
     if v is None:
         return ""
@@ -56,12 +100,26 @@ def split_notes(notes):
     7 blanks if there's nothing to parse (a plain '-' / empty cell)."""
     text = clean(notes)
     if text in ("", "-"):
-        return ["", "", "", "", "", "", ""]
+        return ["", "", "", "", "", "", "", ""]
+    mn = NOTES_PATTERN_NEW.search(text)
+    if mn:
+        d = mn.groupdict()
+        remarks = d["remarks"].strip().strip(",").strip()
+        return [
+            d["lead"].strip(),
+            canonical("value", d["value"].strip()),
+            strip_code_prefix(d["timeline"].strip()),
+            "",  # Client Satisfaction: not on the new form
+            canonical("stage", d["stage"].strip()),
+            canonical("followup", d["followup"].strip()),
+            canonical("leadtype", d["leadtype"].strip()),
+            remarks,
+        ]
     m = NOTES_PATTERN.search(text)
     if not m:
         # Should not happen (all 104 real rows matched during dry-run), but
         # never silently drop data: surface the raw text in Remarks instead.
-        return ["", "", "", "", "", "", f"[UNPARSED] {text}"]
+        return ["", "", "", "", "", "", "", f"[UNPARSED] {text}"]
     d = m.groupdict()
     remarks = d["remarks"].strip().strip(",").strip()
     return [
@@ -69,6 +127,7 @@ def split_notes(notes):
         strip_code_prefix(d["value"].strip()),
         strip_code_prefix(d["timeline"].strip()),
         strip_code_prefix(d["satisfaction"].strip()),
+        "",  # Lead Stage: new form only
         d["followup"].strip(),
         d["leadtype"].strip(),
         remarks,
@@ -91,7 +150,7 @@ def clean_one(src_path, out_path, source_label):
         "Checkin Location", "Checkin Meeting Notes", "Checkout Time",
         "Checkout Location",
         "Lead", "Estimated Project Value", "Project Requirement Timeline",
-        "Client Satisfaction (1-3)", "Next Follow-up Date", "Type of Lead",
+        "Client Satisfaction (1-3)", "Lead Stage", "Next Follow-up Date", "Type of Lead",
         "Remarks",
     ]
 
@@ -153,7 +212,7 @@ def clean_one(src_path, out_path, source_label):
             cell = ws.cell(row=r, column=c, value=val)
             cell.font = body_font
             cell.border = border
-            cell.alignment = Alignment(vertical="top", wrap_text=(c in (6, 7, 16)))
+            cell.alignment = Alignment(vertical="top", wrap_text=(c in (6, 7, 17)))
 
     ws.freeze_panes = "A2"
     ws.auto_filter.ref = f"A1:{get_column_letter(len(new_headers))}{len(out_rows) + 1}"
@@ -161,7 +220,7 @@ def clean_one(src_path, out_path, source_label):
     widths = {
         "A": 6, "B": 11, "C": 14, "D": 11, "E": 18, "F": 32, "G": 10,
         "H": 18, "I": 32, "J": 20, "K": 22, "L": 22, "M": 18, "N": 16,
-        "O": 24, "P": 34,
+        "O": 18, "P": 24, "Q": 34,
     }
     for col, w in widths.items():
         ws.column_dimensions[col].width = w
@@ -192,7 +251,7 @@ def clean_one(src_path, out_path, source_label):
         lines.append(("  - None found.", False))
     lines.append(("", False))
     lines.append(("Rows where Checkout Meeting Notes didn't match the expected "
-                   "Lead/Value/Timeline/Satisfaction/Follow-up/Type/Remarks pattern:", True))
+                   "Lead/Value/Timeline/Satisfaction or Lead Stage/Follow-up/Type/Remarks pattern:", True))
     if unparsed:
         for sno, name, raw in unparsed:
             lines.append((f"  - S.No {sno}: {name} -> raw text kept in Remarks column", False))

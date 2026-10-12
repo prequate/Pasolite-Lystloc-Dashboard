@@ -34,13 +34,14 @@ STD = ["S.No", "Date", "Name", "Employee Status", "Checkin Time", "Checkin Locat
 CLEANED_DIR = os.path.join(HERE, "data", "cleaned")
 
 KNOWN = {
-    "Estimated Project Value": {"Below ₹50,000", "₹50,000 to ₹2 Lakhs", "₹2 Lakhs to ₹5 Lakhs",
+    "Estimated Project Value": {"Not known yet", "Below ₹50,000", "₹50,000 to ₹2 Lakhs", "₹2 Lakhs to ₹5 Lakhs",
                                 "₹5 Lakhs to ₹10 Lakhs", "₹10 Lakhs to ₹15 Lakhs", "Above 15 Lakhs"},
     "Project Requirement Timeline": {"Immediate Requirement", "Within 15 Days", "15 Days to 1 Months",
                                      "1 to 2 Months", "Above 2 Months"},
     "Client Satisfaction (1-3)": {"Not Interested", "Interested", "Very Positive / Strong Opportunity ✅"},
+    "Lead Stage": set(cl.CANONICAL["stage"]),
     "Type of Lead": {"Architect", "Project", "Builders or Procurement Manager", "Dealer",
-                     "Lighting consultant", "Distributor"},
+                     "Lighting consultant", "Distributor"} | set(cl.CANONICAL["leadtype"]),
 }
 
 
@@ -133,6 +134,14 @@ def main():
         if extra:
             new_values[col] = extra
     fu = Counter(str(r.get("Next Follow-up Date") or "").strip() for r in forms)
+
+    # The outputs folder can re-encode PNG files, which changes the embedded
+    # logo. Restore the exact original bytes from the base64 copy first.
+    b64 = os.path.join(HERE, "assets", "pasolite_logo.b64")
+    if os.path.exists(b64):
+        import base64
+        with open(os.path.join(HERE, "assets", "pasolite_logo.png"), "wb") as fh:
+            fh.write(base64.b64decode(open(b64).read()))
 
     res = subprocess.run([sys.executable, os.path.join(HERE, "build_dashboard.py")],
                          capture_output=True, text=True)
