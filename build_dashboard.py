@@ -1109,6 +1109,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
      sales rep, collapsed, with a count. 3. A thin bar under the header
      always names the section, the table and the rep group in view. */
   section.block.tab-hidden{display:none !important;}
+  .rs-actions{display:flex; flex-wrap:wrap; gap:12px; margin-top:6px;}
+  .rs-btn{font-size:14px; padding:10px 16px;}
+  .rs-btn[disabled]{opacity:.5; cursor:not-allowed;}
+  .rs-note{color:var(--ink-muted); font-size:13px; margin:14px 0 0 0; max-width:760px; line-height:1.5;}
   section.block#overview{display:none !important;}
   section.block:not(.tab-hidden){margin-top:0;}
   .quicknav a{display:inline-flex; align-items:center; gap:7px;}
@@ -1314,6 +1318,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <div class="quicknav">
     <div class="quicknav-inner">
       <a href="#scoreboard">Scoreboard</a>
+      <a href="#repsummary">Rep Summary</a>
       <a href="#breakdown">Lead Mix</a>
       <a href="#stale">Follow-up Watch</a>
       <a href="#newleads">New Leads</a>
@@ -1364,6 +1369,30 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <svg class="icon"><use href="#icon-question"></use></svg> How this reconciles
     </button>
     <div class="info-panel" id="reconcilePanel"></div>
+  </section>
+
+  <section class="block" id="repsummary">
+    <div class="block-head">
+      <div class="block-head-left">
+        <span class="icon-badge tone-teal"><svg class="icon"><use href="#icon-clipboard-check"></use></svg></span>
+        <div>
+          <div class="block-eyebrow">Rep Summary</div>
+          <h2>Weekly PDF for each sales executive</h2>
+        </div>
+      </div>
+      <span class="block-hint">Uses the Week filter above. Pick a Sales Executive for one PDF, or download every rep at once.</span>
+    </div>
+    <div class="rs-actions">
+      <button type="button" class="info-btn pdf-btn rs-btn" id="repSummaryBtn" disabled>
+        <svg class="icon"><use href="#icon-clipboard-check"></use></svg>
+        <span id="repSummaryLabel">Pick a sales executive to download</span>
+      </button>
+      <button type="button" class="info-btn pdf-btn rs-btn" id="repSummaryAllBtn">
+        <svg class="icon"><use href="#icon-users"></use></svg>
+        <span id="repSummaryAllLabel">Download all reps</span>
+      </button>
+    </div>
+    <p class="rs-note" id="repSummaryNote"></p>
   </section>
 
   <section class="block" id="breakdown">
@@ -2230,8 +2259,8 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
   // elsewhere on this page. Every consecutive visit pair is checked, not
   // just the latest, credited to the executive who made the promise, and
   // bucketed by the week the promise was actually kept.
-  function computeFollowedUpOnTime() {
-    const f = currentFilters();
+  function computeFollowedUpOnTime(fo) {
+    const f = fo || currentFilters();
     const records = DATA.records.filter((r) => r.hasLead && !r.unnamedLead && r.hasCheckinTime);
     const byLead = new Map();
     records.forEach((r) => {
@@ -2488,6 +2517,342 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     if (typeof doc.putTotalPages === 'function') doc.putTotalPages('{total}');
     const asof = fmtDay(today).replace(/\s+/g, '');
     doc.save('Overdue_Followups_' + f.exec.replace(/\s+/g, '_') + '_' + period.slug + '_asof_' + asof + '.pdf');
+  }
+
+
+  // ---- Rep Summary PDF (added 19-Oct-2026, per Harsh) ----------------------
+  // One page (two for busy weeks) per rep for the selected week: visits done,
+  // new and existing leads, lead stage mix, follow-ups kept, follow-ups still
+  // pending and follow-ups due next week. Pending uses the same rules as the
+  // Overdue Follow-ups list (joint-visit rule, closed leads, due dates), as of
+  // the day the PDF is made, but lists only leads last visited in the past
+  // 60 days; older ones are counted, not listed.
+  const RS_MAX_AGE_DAYS = 60;
+  const RS_EXCLUDE = ['Mahantesh', 'Devaraj']; // office staff, not field reps (19-Oct-2026)
+  function rsWeek() {
+    const f = currentFilters();
+    const start = f.week || (DATA.weeks.length ? DATA.weeks[DATA.weeks.length - 1].start : '');
+    const w = DATA.weeks.find((x) => x.start === start);
+    return { start, label: w ? w.label : start, explicit: !!f.week };
+  }
+  function rsFollowUps(exec) {
+    const allNamed = DATA.records.filter((r) => r.hasLead && !r.unnamedLead && r.hasCheckinTime);
+    const lastDayByLead = new Map();
+    allNamed.forEach((r) => { const k = leadKey(r.lead), d = lastDayByLead.get(k); if (!d || r.date > d) lastDayByLead.set(k, r.date); });
+    const latest = new Map();
+    allNamed.filter((r) => r.exec === exec).forEach((r) => {
+      const k = leadKey(r.lead), prev = latest.get(k);
+      if (!prev || r.date > prev.date || (r.date === prev.date && minutesOf(r) >= minutesOf(prev))) latest.set(k, r);
+    });
+    const out = [];
+    latest.forEach((r) => {
+      if (r.date !== lastDayByLead.get(leadKey(r.lead))) return;
+      if (leadClosure(r) === 'closed') return;
+      const parsed = parseFollowUp(r.followUp, r.date);
+      let assumed = false, basis = 'date', dueDate;
+      if (parsed.date) dueDate = parsed.date;
+      else if ((dueDate = timelineDue(r))) basis = 'timeline';
+      else { assumed = true; basis = 'assumed'; dueDate = addDays(mondayOf(new Date(r.date + 'T00:00:00')), 7); }
+      const threshold = assumed ? addDays(mondayOf(dueDate), 6) : dueDate;
+      out.push({ r, due: threshold, basis });
+    });
+    return out;
+  }
+  function rsShortStage(v) {
+    let t = String(v || '').replace(/[^\x20-\x7E]/g, '').replace(/\s*\(drawings, BOQ or list\)/i, '').replace(/, negotiating/i, '');
+    t = t.replace(/Very Positive \/ Strong Opportunity\W*\(old form\)/i, 'Very positive (old form)').replace(/\s+/g, ' ').trim();
+    return t || '-';
+  }
+  function rsShortType(v) {
+    return pdfText(v).replace(/\s*\(.*\)$/, '').replace(/^Residential - /, '').replace(/ or purchase manager$/i, '').replace(/^Dealer or electrical shop$/, 'Dealer');
+  }
+  function rsShortValue(v) {
+    return pdfText(v).replace(/Rs ?/g, 'Rs ').replace(/ Lakhs?/g, 'L').replace(/50,000/g, '50k').replace(/^Above 15L?.*$/i, 'Above Rs 15L');
+  }
+  function rsData(exec, weekStart) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const visits = DATA.records.filter((r) => r.exec === exec && r.hasCheckinTime && r.hasLead && r.weekStart === weekStart)
+      .sort((a, b) => (a.date === b.date ? minutesOf(a) - minutesOf(b) : (a.date < b.date ? -1 : 1)));
+    const kept = computeFollowedUpOnTime({ month: '', week: weekStart, exec });
+    const fu = rsFollowUps(exec);
+    const cutoff = addDays(today, -RS_MAX_AGE_DAYS);
+    const pendingAll = fu.filter((x) => x.due < today);
+    const pending = pendingAll.filter((x) => new Date(x.r.date + 'T00:00:00') >= cutoff)
+      .map((x) => Object.assign(x, { days: Math.round((today - x.due) / 86400000) }))
+      .sort((a, b) => a.days - b.days); // least late first (Harsh, 19-Oct-2026)
+    const nextMon = addDays(new Date(weekStart + 'T00:00:00'), 7), nextSun = addDays(nextMon, 6);
+    const dueNext = fu.filter((x) => x.due >= nextMon && x.due <= nextSun && new Date(x.r.date + 'T00:00:00') >= cutoff)
+      .sort((a, b) => a.due - b.due);
+    const stages = new Map();
+    visits.forEach((r) => { const k = rsShortStage(r.stageView); stages.set(k, (stages.get(k) || 0) + 1); });
+    return { visits, newL: visits.filter((r) => r.isNew), oldL: visits.filter((r) => r.isExisting), kept, pending,
+             olderHidden: pendingAll.length - pending.length, dueNext, nextMon, nextSun, stages, today };
+  }
+  function rsLogo() {
+    const img = document.querySelector('.wordmark-logo');
+    if (!img || !img.naturalWidth) return null;
+    return { src: img.src, ratio: img.naturalWidth / img.naturalHeight };
+  }
+  // Visual style of the Rep Summary PDF. 'A' dashboard look, 'B' cards, 'C' clean report.
+  const RS_STYLE_DEFAULT = 'C'; // chosen by Harsh, 19-Oct-2026
+  const RS_PILL = {
+    'Met, no live requirement': [[236, 236, 236], [90, 90, 90]],
+    'Requirement shared': [[220, 236, 239], [36, 104, 117]],
+    'Samples or quote asked': [[252, 238, 212], [146, 92, 8]],
+    'Quote sent': [[233, 229, 247], [88, 68, 158]],
+    'Order confirmed': [[221, 240, 228], [38, 120, 74]],
+    'Not interested': [[251, 226, 224], [178, 40, 30]],
+  };
+  function rsPill(t) { return RS_PILL[t] || [[242, 240, 236], [110, 110, 110]]; }
+  function buildRepSummaryPdf(exec, wk, style) {
+    style = style || RS_STYLE_DEFAULT;
+    const d = rsData(exec, wk.start);
+    const doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 36;
+    const INK = [22, 22, 22], MUTED = [112, 112, 112], RED = [225, 55, 43], GREEN = [47, 143, 91], TEAL = [46, 125, 140];
+    const WARM = [247, 245, 242], LINE = [228, 225, 220];
+    const logo = rsLogo();
+    const pageBg = () => { if (style === 'B') { doc.setFillColor(...WARM); doc.rect(0, 0, W, H, 'F'); } };
+    const newPage = () => { doc.addPage(); pageBg(); return style === 'A' ? 56 : 52; };
+    pageBg();
+    // ---------- header ----------
+    let y;
+    if (style === 'A') {
+      doc.setFillColor(...INK); doc.rect(0, 0, W, 104, 'F');
+      doc.setFillColor(...RED); doc.rect(0, 104, W, 3, 'F');
+      if (logo) { try { doc.addImage(logo.src, 'PNG', M, 24, 20 * logo.ratio, 20); } catch (e) {} }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(170, 170, 170);
+      doc.text('WEEKLY FIELD SUMMARY', W - M, 32, { align: 'right' });
+      doc.setFont('helvetica', 'normal'); doc.text('Made on ' + fmtDay(d.today), W - M, 44, { align: 'right' });
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(255, 255, 255); doc.text(pdfText(exec), M, 78);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(200, 200, 200); doc.text('Week of ' + wk.label, M, 94);
+      y = 126;
+    } else if (style === 'B') {
+      if (logo) { try { doc.addImage(logo.src, 'PNG', M, 26, 20 * logo.ratio, 20); } catch (e) {} }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...MUTED);
+      doc.text('WEEKLY FIELD SUMMARY  ·  ' + wk.label.toUpperCase(), W - M, 40, { align: 'right' });
+      doc.setFillColor(255, 255, 255); doc.setDrawColor(...LINE); doc.setLineWidth(0.6); doc.roundedRect(M, 60, W - 2 * M, 58, 8, 8, 'FD');
+      doc.setFillColor(...RED); doc.roundedRect(M + 14, 74, 30, 30, 6, 6, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(255, 255, 255);
+      doc.text(pdfText(exec).split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase(), M + 29, 94, { align: 'center' });
+      doc.setFontSize(18); doc.setTextColor(...INK); doc.text(pdfText(exec), M + 56, 88);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...MUTED); doc.text('Week of ' + wk.label + '   ·   made on ' + fmtDay(d.today), M + 56, 103);
+      y = 132;
+    } else {
+      if (logo) { try { doc.addImage(logo.src, 'PNG', M, 30, 18 * logo.ratio, 18); } catch (e) {} }
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTED);
+      doc.text('Made on ' + fmtDay(d.today), W - M, 42, { align: 'right' });
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(26); doc.setTextColor(...INK); doc.text(pdfText(exec), M, 92);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(...MUTED); doc.text('Weekly field summary  ·  ' + wk.label, M, 110);
+      doc.setFillColor(...RED); doc.rect(M, 120, 48, 3, 'F');
+      y = 140;
+    }
+    // ---------- tiles ----------
+    const tiles = [
+      ['Visits logged', d.visits.length, INK], ['New leads', d.newL.length, TEAL], ['Existing leads', d.oldL.length, INK],
+      ['Kept on time', d.kept.length, GREEN], ['Pending', d.pending.length, d.pending.length ? RED : INK],
+    ];
+    const gap = style === 'C' ? 0 : 8, tw = (W - 2 * M - gap * (tiles.length - 1)) / tiles.length, th = style === 'C' ? 50 : 60;
+    tiles.forEach((t, i) => {
+      const x = M + i * (tw + gap);
+      if (style === 'A') {
+        doc.setFillColor(255, 255, 255); doc.setDrawColor(...LINE); doc.setLineWidth(0.7); doc.roundedRect(x, y, tw, th, 6, 6, 'FD');
+        doc.setFillColor(...t[2]); doc.roundedRect(x, y, tw, 4, 2, 2, 'F'); doc.rect(x, y + 2, tw, 2, 'F');
+      } else if (style === 'B') {
+        doc.setFillColor(255, 255, 255); doc.setDrawColor(...LINE); doc.setLineWidth(0.6); doc.roundedRect(x, y, tw, th, 8, 8, 'FD');
+        doc.setFillColor(...t[2]); doc.circle(x + 16, y + 17, 4, 'F');
+      } else if (i > 0) {
+        doc.setDrawColor(...LINE); doc.setLineWidth(0.8); doc.line(x, y + 6, x, y + th - 6);
+      }
+      const nx = style === 'C' ? x + (i ? 14 : 0) : x + 12;
+      const ny = style === 'B' ? y + 42 : y + 30;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(style === 'C' ? 24 : 21); doc.setTextColor(...t[2]); doc.text(String(t[1]), nx, ny);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTED);
+      if (style === 'B') doc.text(t[0], x + 26, y + 20); else doc.text(t[0], nx, ny + 14);
+    });
+    y += th + 30;
+    // ---------- section heading ----------
+    const section = (eyebrow, title, count) => {
+      if (y > H - 130) y = newPage();
+      if (style === 'A') {
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7.8); doc.setTextColor(183, 28, 28); doc.text(eyebrow.toUpperCase(), M, y);
+        doc.setFontSize(14); doc.setTextColor(...INK); doc.text(title, M, y + 17);
+        if (count !== undefined) {
+          const tx = M + doc.getTextWidth(title) + 8; doc.setFontSize(9);
+          const cw = doc.getTextWidth(String(count)) + 12;
+          doc.setFillColor(...INK); doc.roundedRect(tx, y + 6, cw, 15, 7.5, 7.5, 'F');
+          doc.setTextColor(255, 255, 255); doc.text(String(count), tx + cw / 2, y + 16.5, { align: 'center' });
+        }
+        y += 28;
+      } else if (style === 'B') {
+        doc.setFillColor(255, 255, 255); doc.setDrawColor(...LINE); doc.setLineWidth(0.6);
+        doc.roundedRect(M, y - 14, W - 2 * M, 30, 8, 8, 'FD'); doc.rect(M + 0.3, y + 6, W - 2 * M - 0.6, 10, 'F');
+        doc.setFillColor(...RED); doc.roundedRect(M + 10, y - 7, 16, 16, 4, 4, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...INK); doc.text(title, M + 34, y + 5);
+        if (count !== undefined) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...MUTED); doc.text(String(count), W - M - 12, y + 5, { align: 'right' }); }
+        y += 16;
+      } else {
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(...INK); doc.text(title, M, y + 4);
+        if (count !== undefined) { const tx = M + doc.getTextWidth(title) + 8; doc.setFontSize(15); doc.setTextColor(...RED); doc.text(String(count), tx, y + 4); }
+        doc.setDrawColor(...INK); doc.setLineWidth(1); doc.line(M, y + 11, W - M, y + 11);
+        y += 20;
+      }
+    };
+    // ---------- stage mix ----------
+    section('This week', 'How your meetings ended');
+    if (!d.visits.length) {
+      if (style === 'B') { doc.setFillColor(255, 255, 255); doc.rect(M, y, W - 2 * M, 30, 'F'); }
+      doc.setFont('helvetica', 'italic'); doc.setFontSize(9); doc.setTextColor(...MUTED); doc.text('No visits logged this week.', M + (style === 'B' ? 14 : 0), y + 18); y += 50;
+    } else {
+      const order = ['Met, no live requirement', 'Requirement shared', 'Samples or quote asked', 'Quote sent', 'Order confirmed', 'Not interested'];
+      const rows = Array.from(d.stages.entries()).sort((a, b) => { const ia = order.indexOf(a[0]), ib = order.indexOf(b[0]); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
+      const max = Math.max(...rows.map((r) => r[1])), pad = style === 'B' ? 14 : 0, labelW = 140, barMax = W - 2 * M - labelW - 40 - 2 * pad;
+      const boxH = rows.length * 17 + 14;
+      if (style === 'B') { doc.setFillColor(255, 255, 255); doc.setDrawColor(...LINE); doc.roundedRect(M, y - 2, W - 2 * M, boxH, 8, 8, 'FD'); doc.rect(M + 0.3, y - 2, W - 2 * M - 0.6, 8, 'F'); }
+      let yy = y + 6;
+      rows.forEach(([k, n]) => {
+        const c = rsPill(k), bw = Math.max(3, barMax * n / max);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.8); doc.setTextColor(...INK); doc.text(pdfText(k), M + pad, yy + 8);
+        doc.setFillColor(...(style === 'C' ? [96, 96, 96] : c[1])); /* C: one neutral colour (Harsh, 19-Oct-2026) */ doc.roundedRect(M + pad + labelW, yy, bw, 10, 2, 2, 'F');
+        doc.setFont('helvetica', 'bold'); doc.text(String(n), M + pad + labelW + bw + 6, yy + 8.5);
+        yy += 17;
+      });
+      y = y + boxH + 26;
+    }
+    // ---------- tables ----------
+    const table = (eyebrow, title, count, headRow, body, colStyles, emptyText, pillCols, lateCol) => {
+      section(eyebrow, title, count);
+      if (!body.length) {
+        if (style === 'B') { doc.setFillColor(255, 255, 255); doc.setDrawColor(...LINE); doc.roundedRect(M, y - 2, W - 2 * M, 30, 8, 8, 'FD'); doc.rect(M + 0.3, y - 2, W - 2 * M - 0.6, 8, 'F'); }
+        doc.setFont('helvetica', 'italic'); doc.setFontSize(9); doc.setTextColor(...MUTED); doc.text(emptyText, M + (style === 'B' ? 14 : 0), y + 15); y += 50; return;
+      }
+      const headStyles = style === 'A' ? { fillColor: INK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.6 }
+        : style === 'B' ? { fillColor: [255, 255, 255], textColor: MUTED, fontStyle: 'bold', fontSize: 7.6, lineWidth: { bottom: 0.6 }, lineColor: LINE }
+        : { fillColor: [255, 255, 255], textColor: MUTED, fontStyle: 'bold', fontSize: 7.6 };
+      doc.autoTable({
+        startY: y, margin: { left: M, right: M, bottom: 42, top: 52 }, head: [headRow], body,
+        styles: { font: 'helvetica', fontSize: 8, cellPadding: { top: 4.5, bottom: 4.5, left: 5, right: 5 }, textColor: [30, 30, 30], valign: 'middle', overflow: 'linebreak',
+                  lineColor: style === 'C' ? [232, 232, 232] : LINE, lineWidth: style === 'C' ? { bottom: 0.5 } : (style === 'B' ? { bottom: 0.4 } : 0.4), fillColor: [255, 255, 255] },
+        headStyles, alternateRowStyles: style === 'A' ? { fillColor: [250, 248, 245] } : { fillColor: [255, 255, 255] },
+        columnStyles: colStyles,
+        willDrawPage: (data) => { if (data.pageNumber > 1 && style === 'B') pageBg(); },
+        didParseCell: (h) => { if (h.section === 'body' && (pillCols.includes(h.column.index) || h.column.index === lateCol)) { h.cell.raw0 = h.cell.text.join(' '); h.cell.text = ['']; } },
+        didDrawCell: (h) => {
+          if (h.section !== 'body' || h.cell.raw0 === undefined) return;
+          const t = h.cell.raw0, isLate = h.column.index === lateCol;
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(7.4);
+          if (style === 'C') {
+            const c = isLate ? [null, RED] : rsPill(t); doc.setTextColor(...c[1]);
+            doc.text(t, isLate ? h.cell.x + h.cell.width - 5 : h.cell.x + 5, h.cell.y + h.cell.height / 2 + 2.6, { align: isLate ? 'right' : 'left' }); return;
+          }
+          const c = isLate ? [[251, 226, 224], [178, 40, 30]] : rsPill(t);
+          const tw3 = Math.min(doc.getTextWidth(t) + 12, h.cell.width - 6), ph = 13;
+          const px = isLate ? h.cell.x + h.cell.width - tw3 - 4 : h.cell.x + 4, py = h.cell.y + (h.cell.height - ph) / 2;
+          doc.setFillColor(...c[0]); doc.roundedRect(px, py, tw3, ph, 6.5, 6.5, 'F');
+          doc.setTextColor(...c[1]); doc.text(t, px + tw3 / 2, py + 9.2, { align: 'center', maxWidth: tw3 - 4 });
+        },
+      });
+      y = doc.lastAutoTable.finalY + 30;
+    };
+    const dshort = (s) => fmtDay(new Date(s + 'T00:00:00')).replace(/ \d{4}$/, '');
+    const visitRow = (r) => [dshort(r.date), pdfText(r.lead), rsShortType(r.leadType), rsShortValue(r.value), rsShortStage(r.stageView), pdfText(r.followUp)];
+    const visitCols = { 0: { cellWidth: 44 }, 1: { cellWidth: 128, fontStyle: 'bold' }, 2: { cellWidth: 88 }, 3: { cellWidth: 70 }, 4: { cellWidth: 108 }, 5: { cellWidth: 'auto' } };
+    const vHead = ['Date', 'Client', 'Type of lead', 'Value', 'Stage', 'Next follow-up'];
+    table('New leads', 'New leads met', d.newL.length, vHead, d.newL.map(visitRow), visitCols, 'No new leads this week.', [4], -1);
+    table('Existing leads', 'Existing leads revisited', d.oldL.length, vHead, d.oldL.map(visitRow), visitCols, 'No existing leads revisited this week.', [4], -1);
+    const dueTxt = (x) => fmtDay(x.due).replace(/ \d{4}$/, '') + (x.basis === 'assumed' ? ' *' : '');
+    table('Follow-up watch', 'Follow-ups pending', d.pending.length,
+      ['Client', 'Last visit', 'Value', 'Stage when last met', 'Was due', 'Days late'],
+      d.pending.map((x) => [pdfText(x.r.lead), dshort(x.r.date), rsShortValue(x.r.value), rsShortStage(x.r.stageView), dueTxt(x), String(x.days)]),
+      { 0: { cellWidth: 150, fontStyle: 'bold' }, 1: { cellWidth: 58 }, 2: { cellWidth: 70 }, 3: { cellWidth: 118 }, 4: { cellWidth: 56 }, 5: { cellWidth: 'auto' } },
+      'Nothing pending. Well done.', [3], 5);
+    if (d.olderHidden > 0) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTED);
+      doc.text(plural(d.olderHidden, 'older lead') + ' not listed (last visit more than ' + RS_MAX_AGE_DAYS + ' days ago).', M, y - 18); y += 4;
+    }
+    table('Coming up', 'Due next week', dshort(ymd(d.nextMon)) + ' to ' + dshort(ymd(d.nextSun)),
+      ['Client', 'Last visit', 'Value', 'Stage when last met', 'Due by'],
+      d.dueNext.map((x) => [pdfText(x.r.lead), dshort(x.r.date), rsShortValue(x.r.value), rsShortStage(x.r.stageView), dueTxt(x)]),
+      { 0: { cellWidth: 170, fontStyle: 'bold' }, 1: { cellWidth: 64 }, 2: { cellWidth: 76 }, 3: { cellWidth: 124 }, 4: { cellWidth: 'auto' } },
+      'No follow-ups fall due next week.', [3], -1);
+    const n = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= n; i++) {
+      doc.setPage(i);
+      if (style === 'A' && i > 1) { doc.setFillColor(...INK); doc.rect(0, 0, W, 6, 'F'); }
+      doc.setDrawColor(...LINE); doc.setLineWidth(0.5); doc.line(M, H - 30, W - M, H - 30);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.2); doc.setTextColor(150, 150, 150);
+      doc.text('Pasolite  ·  ' + pdfText(exec) + '  ·  Week of ' + wk.label + '  ·  * no follow-up date written, deadline assumed', M, H - 18);
+      doc.text('Page ' + i + ' of ' + n, W - M, H - 18, { align: 'right' });
+    }
+    return { doc, file: 'Weekly_Summary_' + exec.replace(/\s+/g, '_') + '_' + wk.label.replace(/\s+/g, '') + '.pdf' };
+  }
+  function exportRepSummaryPdf() {
+    const f = currentFilters(); if (!f.exec || !window.jspdf) return;
+    const out = buildRepSummaryPdf(f.exec, rsWeek()); out.doc.save(out.file);
+  }
+  function rsRepsWithActivity(wkStart) {
+    return DATA.execs.filter((e) => !RS_EXCLUDE.includes(e) && DATA.records.some((r) => r.exec === e && r.weekStart === wkStart) &&
+      DATA.records.some((r) => r.exec === e && r.hasLead));
+  }
+  // Minimal ZIP writer (stored, no compression: PDFs are already compressed).
+  // Added 19-Oct-2026 so "Download all reps" saves one zip, with no new library.
+  const RS_CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function rsCrc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = RS_CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  function rsZip(files) {
+    const enc = new TextEncoder(), parts = [], central = [];
+    const d = new Date(), dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1),
+          dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    let offset = 0;
+    files.forEach((f) => {
+      const name = enc.encode(f.name), data = f.data, crc = rsCrc32(data);
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+      lh.setUint16(10, dosTime, true); lh.setUint16(12, dosDate, true); lh.setUint32(14, crc, true);
+      lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+      parts.push(new Uint8Array(lh.buffer), name, data);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+      ch.setUint16(12, dosTime, true); ch.setUint16(14, dosDate, true); ch.setUint32(16, crc, true);
+      ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true);
+      ch.setUint16(30, 0, true); ch.setUint16(32, 0, true); ch.setUint16(34, 0, true); ch.setUint16(36, 0, true); ch.setUint32(38, 0, true); ch.setUint32(42, offset, true);
+      central.push(new Uint8Array(ch.buffer), name);
+      offset += 30 + name.length + data.length;
+    });
+    const cdSize = central.reduce((n, p) => n + p.length, 0);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+    end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+    return new Blob(parts.concat(central, [new Uint8Array(end.buffer)]), { type: 'application/zip' });
+  }
+  async function exportAllRepSummaries() {
+    if (!window.jspdf) return;
+    const wk = rsWeek(), reps = rsRepsWithActivity(wk.start);
+    const btn = document.getElementById('repSummaryAllBtn'); btn.disabled = true;
+    const files = [];
+    for (let i = 0; i < reps.length; i++) {
+      document.getElementById('repSummaryAllLabel').textContent = 'Preparing ' + (i + 1) + ' of ' + reps.length + '...';
+      await new Promise((res) => setTimeout(res, 20));
+      const out = buildRepSummaryPdf(reps[i], wk);
+      files.push({ name: out.file, data: new Uint8Array(out.doc.output('arraybuffer')) });
+    }
+    const blob = rsZip(files), a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'Weekly_Summaries_All_Reps_' + wk.label.replace(/\s+/g, '') + '.zip';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    btn.disabled = false; updateRepSummaryButtons();
+  }
+  function updateRepSummaryButtons() {
+    const f = currentFilters(), wk = rsWeek();
+    const btn = document.getElementById('repSummaryBtn'), label = document.getElementById('repSummaryLabel');
+    if (!btn) return;
+    if (!f.exec) { btn.disabled = true; label.textContent = 'Pick a sales executive to download'; }
+    else { btn.disabled = false; label.textContent = 'Download PDF for ' + f.exec + ' (' + wk.label + ')'; }
+    const reps = rsRepsWithActivity(wk.start);
+    document.getElementById('repSummaryAllLabel').textContent = 'Download all reps as one zip (' + reps.length + ' PDFs, ' + wk.label + ')';
+    document.getElementById('repSummaryNote').textContent = (wk.explicit ? '' : 'No week picked, so the latest week is used. ') +
+      'Each PDF shows the rep\'s visits for the week (new and existing leads), how meetings ended, follow-ups kept on time, ' +
+      'follow-ups still pending as of today (least late first) and follow-ups due next week. Pending leads last visited more than ' + RS_MAX_AGE_DAYS +
+      ' days ago are counted but not listed. All reps download together as one zip file, one PDF per rep inside.';
   }
 
   // ---- Followed up by a colleague (rep view only, added 24-Sep-2026) ------
@@ -3143,6 +3508,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
     renderStale();
     renderNoCheckin();
     if (typeof renderScoreboard === 'function') renderScoreboard();
+    updateRepSummaryButtons();
   }
 
   // ---- generic "ⓘ" info-button toggle ---------------------------------
@@ -3172,6 +3538,8 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
   document.getElementById('weekSelect').addEventListener('change', renderAll);
   document.getElementById('execSelect').addEventListener('change', renderAll);
   document.getElementById('overduePdfBtn').addEventListener('click', exportOverduePdf);
+  document.getElementById('repSummaryBtn').addEventListener('click', exportRepSummaryPdf);
+  document.getElementById('repSummaryAllBtn').addEventListener('click', exportAllRepSummaries);
   document.getElementById('newLeadsSearch').addEventListener('input', () => renderLeadsTable('newLeads', filteredRecords()));
   document.getElementById('existingLeadsSearch').addEventListener('input', () => renderLeadsTable('existingLeads', filteredRecords()));
 
@@ -3277,7 +3645,7 @@ const DASHBOARD_DATA = __DASHBOARD_DATA__;
 
 
   // ---- Tabs, rep groups, "you are here" bar (28-Sep-2026) ---------------
-  const TAB_IDS = ['scoreboard', 'breakdown', 'stale', 'newleads', 'existingleads', 'nocheckin'];
+  const TAB_IDS = ['scoreboard', 'repsummary', 'breakdown', 'stale', 'newleads', 'existingleads', 'nocheckin'];
   let activeTab = 'scoreboard';
   function showTab(id, scroll) {
     if (!TAB_IDS.includes(id)) id = 'scoreboard';
