@@ -739,11 +739,11 @@
   <div class="quicknav">
     <div class="quicknav-inner">
       <a href="#scoreboard">Scoreboard</a>
-      <a href="#repsummary">Rep Summary</a>
       <a href="#breakdown">Lead Mix</a>
       <a href="#stale">Follow-up Watch</a>
       <a href="#newleads">New Leads</a>
       <a href="#existingleads">Existing Leads</a>
+      <a href="#repsummary">Rep Summary</a>
       <a href="#nocheckin">Missed Days</a>
     </div>
   </div>
@@ -2416,6 +2416,17 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026", "October 202
   function buildRepSummaryPdf(exec, wk, style) {
     style = style || RS_STYLE_DEFAULT;
     const d = rsData(exec, wk.start);
+    const RSV = window.__rsVariant || 'D';
+    const wkMon = new Date(wk.start + 'T00:00:00'), wkSun = addDays(wkMon, 6);
+    const dm = (x) => x.getDate() + ' ' + x.toLocaleString('en-US', { month: 'short' });
+    const dmy = (x) => dm(x) + ' ' + x.getFullYear();
+    const wkLong = 'Mon ' + dm(wkMon) + ' to Sun ' + dmy(wkSun);
+    const wkLongUp = wkLong.toUpperCase();
+    const wkShort = dm(wkMon) + ' to ' + dm(wkSun);
+    const wkShortUp = (wkMon.getMonth() === wkSun.getMonth() ? wkMon.getDate() + ' to ' + dm(wkSun) : wkShort).toUpperCase();
+    const wkYear = String(wkSun.getFullYear());
+    const nxMon = addDays(wkMon, 7), nxSun = addDays(wkMon, 13);
+    const nxLong = dm(nxMon) + ' to ' + dmy(nxSun);
     const doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
     const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 36;
     const INK = [22, 22, 22], MUTED = [112, 112, 112], RED = [225, 55, 43], GREEN = [47, 143, 91], TEAL = [46, 125, 140];
@@ -2448,18 +2459,60 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026", "October 202
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...MUTED); doc.text('Week of ' + wk.label + '   ·   made on ' + fmtDay(d.today), M + 56, 103);
       y = 132;
     } else {
+      // ---- Week made unmissable + where the data comes from (MOCK 21-Oct-2026) ----
       if (logo) { try { doc.addImage(logo.src, 'PNG', M, 30, 18 * logo.ratio, 18); } catch (e) {} }
       doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTED);
       doc.text('Made on ' + fmtDay(d.today), W - M, 42, { align: 'right' });
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(26); doc.setTextColor(...INK); doc.text(pdfText(exec), M, 92);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(...MUTED); doc.text('Weekly field summary  ·  ' + wk.label, M, 110);
-      doc.setFillColor(...RED); doc.rect(M, 120, 48, 3, 'F');
-      y = 140;
+      const drawHowTo = () => {
+          const lines = [
+            ['Where this comes from:', 'your own LystLoc check-ins and visit forms. A visit not logged in LystLoc does not appear here.'],
+            ['Visits, new and existing leads:', 'the week of ' + wkLong + '.'],
+            ['Due next week:', 'follow-ups that fall due ' + nxLong + '.'],
+            ['Pending follow-ups (last section):', 'counted on ' + fmtDay(d.today) + ', for leads you visited in the last ' + RS_MAX_AGE_DAYS + ' days.'],
+          ];
+          const bh = 22 + lines.length * 12.5;
+          doc.setFillColor(246, 246, 246); doc.setDrawColor(228, 228, 228); doc.setLineWidth(0.6); doc.roundedRect(M, y - 4, W - 2 * M, bh, 5, 5, 'FD');
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...INK); doc.text('How to read this summary', M + 12, y + 10);
+          lines.forEach((l, i) => {
+            const ly = y + 25 + i * 12.5;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(8.4); doc.setTextColor(...INK); doc.text(l[0], M + 12, ly);
+            const lw = doc.getTextWidth(l[0] + ' ');
+            doc.setFont('helvetica', 'normal'); doc.setTextColor(70, 70, 70); doc.text(l[1], M + 12 + lw, ly);
+          });
+          y += bh + 18;
+      };
+      if (RSV === 'C' || RSV === 'D') {
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(26); doc.setTextColor(...INK); doc.text(pdfText(exec), M, 92);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(...MUTED); doc.text('Weekly field summary', M, 110);
+        const bx = W - M - 150, by = 58, bw = 150, bh = 66;
+        doc.setDrawColor(...RED); doc.setLineWidth(1.4); doc.setFillColor(255, 255, 255); doc.roundedRect(bx, by, bw, bh, 6, 6, 'FD');
+        doc.setFillColor(...RED); doc.roundedRect(bx, by, bw, 17, 6, 6, 'F'); doc.rect(bx, by + 10, bw, 7, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255, 255, 255); doc.text('THIS PDF IS FOR THE WEEK', bx + bw / 2, by + 12, { align: 'center' });
+        doc.setFontSize(17); doc.setTextColor(...INK); doc.text(wkShortUp, bx + bw / 2, by + 39, { align: 'center' });
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTED); doc.text(wkYear + '  ·  Monday to Sunday', bx + bw / 2, by + 55, { align: 'center' });
+        doc.setFillColor(...RED); doc.rect(M, 120, 48, 3, 'F');
+        y = 146;
+        if (RSV === 'D') { y += 2; drawHowTo(); }
+      } else {
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(26); doc.setTextColor(...INK); doc.text(pdfText(exec), M, 86);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(...MUTED); doc.text('Weekly field summary', M, 103);
+        doc.setFillColor(...RED); doc.roundedRect(M, 114, W - 2 * M, 34, 5, 5, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(255, 255, 255); doc.text('WEEK:  ' + wkLongUp, M + 14, 136);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.text('Check this date before you read', W - M - 14, 135, { align: 'right' });
+        y = 162;
+        if (RSV === 'A') {
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...MUTED);
+          doc.text('Made from your own LystLoc check-ins and visit forms. It shows only what you logged in LystLoc.', M, y + 2);
+          y += 24;
+        } else {
+          drawHowTo();
+        }
+      }
     }
     // ---------- tiles ----------
     const tiles = [
       ['Visits logged', d.visits.length, INK], ['New leads', d.newL.length, TEAL], ['Existing leads', d.oldL.length, INK],
-      ['Kept on time', d.kept.length, GREEN], ['Pending', d.pending.length, d.pending.length ? RED : INK],
+      ['Kept on time', d.kept.length, GREEN], [style === 'C' ? 'Pending (60 days)' : 'Pending', d.pending.length, d.pending.length ? RED : INK],
     ];
     const gap = style === 'C' ? 0 : 8, tw = (W - 2 * M - gap * (tiles.length - 1)) / tiles.length, th = style === 'C' ? 50 : 60;
     tiles.forEach((t, i) => {
@@ -2480,8 +2533,13 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026", "October 202
       if (style === 'B') doc.text(t[0], x + 26, y + 20); else doc.text(t[0], nx, ny + 14);
     });
     y += th + 30;
+    if (style === 'C') {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); doc.setTextColor(...MUTED);
+      doc.text('First four numbers: ' + wkShort + '.  Pending: counted on ' + fmtDay(d.today) + ', leads visited in the last ' + RS_MAX_AGE_DAYS + ' days.', M, y - 16);
+      y += 4;
+    }
     // ---------- section heading ----------
-    const section = (eyebrow, title, count) => {
+    const section = (eyebrow, title, count, period) => {
       if (y > H - 130) y = newPage();
       if (style === 'A') {
         doc.setFont('helvetica', 'bold'); doc.setFontSize(7.8); doc.setTextColor(183, 28, 28); doc.text(eyebrow.toUpperCase(), M, y);
@@ -2503,12 +2561,13 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026", "October 202
       } else {
         doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(...INK); doc.text(title, M, y + 4);
         if (count !== undefined) { const tx = M + doc.getTextWidth(title) + 8; doc.setFontSize(15); doc.setTextColor(...RED); doc.text(String(count), tx, y + 4); }
+        if (period) { doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...MUTED); doc.text(period, W - M, y + 4, { align: 'right' }); }
         doc.setDrawColor(...INK); doc.setLineWidth(1); doc.line(M, y + 11, W - M, y + 11);
         y += 20;
       }
     };
     // ---------- stage mix ----------
-    section('This week', 'How your meetings ended');
+    section('This week', 'How your meetings ended', undefined, style === 'C' ? wkShort : undefined);
     if (!d.visits.length) {
       if (style === 'B') { doc.setFillColor(255, 255, 255); doc.rect(M, y, W - 2 * M, 30, 'F'); }
       doc.setFont('helvetica', 'italic'); doc.setFontSize(9); doc.setTextColor(...MUTED); doc.text('No visits logged this week.', M + (style === 'B' ? 14 : 0), y + 18); y += 50;
@@ -2529,8 +2588,12 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026", "October 202
       y = y + boxH + 26;
     }
     // ---------- tables ----------
-    const table = (eyebrow, title, count, headRow, body, colStyles, emptyText, pillCols, lateCol) => {
-      section(eyebrow, title, count);
+    const table = (eyebrow, title, count, headRow, body, colStyles, emptyText, pillCols, lateCol, period, note) => {
+      section(eyebrow, title, count, style === 'C' ? period : undefined);
+      if (note && style === 'C') {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.4); doc.setTextColor(80, 80, 80);
+        const nl = doc.splitTextToSize(note, W - 2 * M); doc.text(nl, M, y + 2); y += nl.length * 10.5 + 8;
+      }
       if (!body.length) {
         if (style === 'B') { doc.setFillColor(255, 255, 255); doc.setDrawColor(...LINE); doc.roundedRect(M, y - 2, W - 2 * M, 30, 8, 8, 'FD'); doc.rect(M + 0.3, y - 2, W - 2 * M - 0.6, 8, 'F'); }
         doc.setFont('helvetica', 'italic'); doc.setFontSize(9); doc.setTextColor(...MUTED); doc.text(emptyText, M + (style === 'B' ? 14 : 0), y + 15); y += 50; return;
@@ -2570,30 +2633,39 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026", "October 202
     table('New leads', 'New leads met', d.newL.length, vHead, d.newL.map(visitRow), visitCols, 'No new leads this week.', [4], -1);
     table('Existing leads', 'Existing leads revisited', d.oldL.length, vHead, d.oldL.map(visitRow), visitCols, 'No existing leads revisited this week.', [4], -1);
     const dueTxt = (x) => fmtDay(x.due).replace(/ \d{4}$/, '') + (x.basis === 'assumed' ? ' *' : '');
-    table('Follow-up watch', 'Follow-ups pending', d.pending.length,
+    table('Coming up', 'Due next week', d.dueNext.length,
+      ['Client', 'Last visit', 'Value', 'Stage when last met', 'Due by'],
+      d.dueNext.map((x) => [pdfText(x.r.lead), dshort(x.r.date), rsShortValue(x.r.value), rsShortStage(x.r.stageView), dueTxt(x)]),
+      { 0: { cellWidth: 170, fontStyle: 'bold' }, 1: { cellWidth: 64 }, 2: { cellWidth: 76 }, 3: { cellWidth: 124 }, 4: { cellWidth: 'auto' } },
+      'No follow-ups fall due next week.', [3], -1, nxLong);
+    table('Follow-up watch', style === 'C' ? 'Total follow-ups pending in the last ' + RS_MAX_AGE_DAYS + ' days' : 'Follow-ups pending', d.pending.length,
       ['Client', 'Last visit', 'Value', 'Stage when last met', 'Was due', 'Days late'],
       d.pending.map((x) => [pdfText(x.r.lead), dshort(x.r.date), rsShortValue(x.r.value), rsShortStage(x.r.stageView), dueTxt(x), String(x.days)]),
       { 0: { cellWidth: 150, fontStyle: 'bold' }, 1: { cellWidth: 58 }, 2: { cellWidth: 70 }, 3: { cellWidth: 118 }, 4: { cellWidth: 56 }, 5: { cellWidth: 'auto' } },
-      'Nothing pending. Well done.', [3], 5);
+      'Nothing pending. Well done.', [3], 5, 'As of ' + fmtDay(d.today),
+      'Why this is here: these are clients you met in the last ' + RS_MAX_AGE_DAYS + ' days where the follow-up date you set has passed and no visit has been logged since. ' +
+      'It is counted on the day this PDF was made, so it covers more than this week. Each one is a client still waiting to hear from Pasolite.');
     if (d.olderHidden > 0) {
       doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTED);
       doc.text(plural(d.olderHidden, 'older lead') + ' not listed (last visit more than ' + RS_MAX_AGE_DAYS + ' days ago).', M, y - 18); y += 4;
     }
-    table('Coming up', 'Due next week', dshort(ymd(d.nextMon)) + ' to ' + dshort(ymd(d.nextSun)),
-      ['Client', 'Last visit', 'Value', 'Stage when last met', 'Due by'],
-      d.dueNext.map((x) => [pdfText(x.r.lead), dshort(x.r.date), rsShortValue(x.r.value), rsShortStage(x.r.stageView), dueTxt(x)]),
-      { 0: { cellWidth: 170, fontStyle: 'bold' }, 1: { cellWidth: 64 }, 2: { cellWidth: 76 }, 3: { cellWidth: 124 }, 4: { cellWidth: 'auto' } },
-      'No follow-ups fall due next week.', [3], -1);
     const n = doc.internal.getNumberOfPages();
     for (let i = 1; i <= n; i++) {
       doc.setPage(i);
       if (style === 'A' && i > 1) { doc.setFillColor(...INK); doc.rect(0, 0, W, 6, 'F'); }
+      if (style === 'C' && i > 1) {
+        doc.setFillColor(...RED); doc.rect(M, 24, 4, 14, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...INK);
+        doc.text(pdfText(exec) + '  ·  Week of ' + wkLong + '  (continued)', M + 10, 35);
+      }
       doc.setDrawColor(...LINE); doc.setLineWidth(0.5); doc.line(M, H - 30, W - M, H - 30);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7.2); doc.setTextColor(150, 150, 150);
-      doc.text('Pasolite  ·  ' + pdfText(exec) + '  ·  Week of ' + wk.label + '  ·  * no follow-up date written, deadline assumed', M, H - 18);
+      doc.text(style === 'C'
+        ? 'Pasolite  ·  ' + pdfText(exec) + '  ·  Week of ' + wkShort + ' ' + wkYear + '  ·  Made from your LystLoc data  ·  * no follow-up date written, deadline assumed'
+        : 'Pasolite  ·  ' + pdfText(exec) + '  ·  Week of ' + wk.label + '  ·  * no follow-up date written, deadline assumed', M, H - 18);
       doc.text('Page ' + i + ' of ' + n, W - M, H - 18, { align: 'right' });
     }
-    return { doc, file: 'Weekly_Summary_' + exec.replace(/\s+/g, '_') + '_' + wk.label.replace(/\s+/g, '') + '.pdf' };
+    return { doc, file: 'Weekly_Summary_' + exec.replace(/\s+/g, '_') + '_Week_' + wk.label.replace(/\s+/g, '') + '.pdf' };
   }
   function exportRepSummaryPdf() {
     const f = currentFilters(); if (!f.exec || !window.jspdf) return;
@@ -3454,7 +3526,7 @@ const DASHBOARD_DATA = {"months": ["August 2026", "September 2026", "October 202
 
 
   // ---- Tabs, rep groups, "you are here" bar (28-Sep-2026) ---------------
-  const TAB_IDS = ['scoreboard', 'repsummary', 'breakdown', 'stale', 'newleads', 'existingleads', 'nocheckin'];
+  const TAB_IDS = ['scoreboard', 'breakdown', 'stale', 'newleads', 'existingleads', 'repsummary', 'nocheckin'];
   let activeTab = 'scoreboard';
   function showTab(id, scroll) {
     if (!TAB_IDS.includes(id)) id = 'scoreboard';
